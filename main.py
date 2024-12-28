@@ -1,4 +1,5 @@
 """2D drawing examples utilising the SDL2_gfx functions."""
+import logging
 import sys
 import ctypes
 from random import randint
@@ -7,6 +8,10 @@ import sdl2
 import sdl2.sdlgfx
 import sdl2.ext
 
+from logger import setup_logging
+
+
+log = logging.getLogger(__name__)
 
 # Draws random lines using the passed rendering context
 def draw_lines(context, width, height):
@@ -155,11 +160,14 @@ def draw_rects(context, width, height):
 
 
 def run():
+    setup_logging(verbose=True)
     # You know those from the helloworld.py example.
     # Initialize the video subsystem, create a window and make it visible.
     sdl2.ext.init(joystick=True, controller=True)
     window = sdl2.ext.Window("sdlgfx drawing examples", size=(640, 480))
     window.show()
+
+    log.info("Adding gamecontroller mappings")
 
     sdl2.SDL_GameControllerAddMappingsFromFile(b"gamecontrollerdb.txt")
 
@@ -170,8 +178,8 @@ def run():
             pad = sdl2.SDL_GameControllerOpen(i)
             # Get controller info
             print("Controller: {0}".format(sdl2.SDL_GameControllerName(pad)))
-            mapping = sdl2.SDL_GameControllerMapping(pad)
-            print("Controller mapping: {0}".format(mapping))
+            # mapping = sdl2.SDL_GameControllerMapping(pad)
+            # print("Controller mapping: {0}".format(mapping))
 
     renderflags = sdl2.render.SDL_RENDERER_SOFTWARE
     context = sdl2.ext.Renderer(window, flags=renderflags)
@@ -186,6 +194,7 @@ def run():
     # which function to execute next.
     curindex = 0
     draw_lines(context, 640, 480)
+    sdl2.sdlgfx.gfxPrimitivesSetFont()
     sdl2.sdlgfx.stringColor(context.sdlrenderer, 10, 10, b"Hello World", 0xFFFFFFFF)
     context.present()
 
@@ -209,18 +218,18 @@ def run():
         for event in events:
             if event.type in controller_events:
                 match event.type:
-                    case sdl2.SDL_CONTROLLERAXISMOTION:
-                        print("Axis {0} moved to {1}".format(event.caxis.axis, event.caxis.value))
+                    # case sdl2.SDL_CONTROLLERAXISMOTION:
+                    #     print("Axis {0} moved to {1}".format(event.caxis.axis, event.caxis.value))
                     case sdl2.SDL_CONTROLLERBUTTONDOWN:
-                        print("Button {0} pressed".format(event.cbutton.button))
+                        log.debug("Button {0} pressed".format(event.cbutton.button))
                     case sdl2.SDL_CONTROLLERBUTTONUP:
-                        print("Button {0} released".format(event.cbutton.button))
+                        log.debug("Button {0} released".format(event.cbutton.button))
                     case sdl2.SDL_CONTROLLERDEVICEADDED:
-                        print("Controller added")
+                        log.debug("Controller added")
                     case sdl2.SDL_CONTROLLERDEVICEREMOVED:
-                        print("Controller removed")
+                        log.debug("Controller removed")
                     case sdl2.SDL_CONTROLLERDEVICEREMAPPED:
-                        print("Controller remapped")
+                        log.debug("Controller remapped")
 
     sdl2.ext.quit()
     return 0
