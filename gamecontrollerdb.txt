@@ -1,0 +1,1 @@
+03000000250900000500000000000000,PS2 SmartJoy,platform:Windows,a:b2,b:b1,x:b3,y:b0,back:b9,start:b8,leftstick:b10,rightstick:b11,leftshoulder:b6,rightshoulder:b7,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b4,righttrigger:b5,
