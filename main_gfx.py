@@ -8,7 +8,7 @@ import sdl2
 import sdl2.sdlgfx
 import sdl2.ext
 
-from logger import setup_logging
+from xayos.logger import setup_logging
 
 
 log = logging.getLogger(__name__)
@@ -194,7 +194,7 @@ def run():
     # which function to execute next.
     curindex = 0
     draw_lines(context, 640, 480)
-    sdl2.sdlgfx.gfxPrimitivesSetFont()
+    # sdl2.sdlgfx.gfxPrimitivesSetFont()
     sdl2.sdlgfx.stringColor(context.sdlrenderer, 10, 10, b"Hello World", 0xFFFFFFFF)
     context.present()
 
