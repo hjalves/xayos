@@ -57,3 +57,7 @@ class StarField:
             x = int(star.x * factor + self.width / 2)
             y = int(-star.y * factor + self.height / 2)
             sdlgfx.pixelRGBA(renderer, x, y, star.fill, star.fill, star.fill, 255)
+            # if star.radius > 1:
+            #     sdlgfx.filledCircleRGBA(
+            #         renderer, x, y, int(star.radius), star.fill, star.fill, star.fill, 255
+            #     )

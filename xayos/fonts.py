@@ -15,6 +15,7 @@ class FontLoader:
         self.font_data = {
             "8x8": (8, 8, None),
         }
+        self.current_font = None
 
     def available_fonts(self):
         return self.font_data.keys()
@@ -42,6 +43,8 @@ class FontLoader:
         self.font_data[font_name] = (width, height, font_data)
 
     def set_font(self, font_name=None):
+        if font_name == self.current_font:
+            return
         if font_name is None:
             sdlgfx.gfxPrimitivesSetFont(None, 0, 0)
             return
@@ -49,3 +52,9 @@ class FontLoader:
             self.load_font(font_name)
         width, height, font_data = self.font_data[font_name]
         sdlgfx.gfxPrimitivesSetFont(font_data, width, height)
+        self.current_font = font_name
+
+    def get_font_size(self, font_name):
+        if font_name not in self.font_data:
+            raise ValueError(f"Font {font_name} not loaded")
+        return self.font_data[font_name][:2]
