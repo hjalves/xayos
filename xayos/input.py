@@ -7,6 +7,10 @@ from xayos import colors
 log = logging.getLogger(__name__)
 
 
+class GamepadState:
+    pass
+
+
 class TextInputHandler:
     TRIGGER_THRESHOLD = 20000
 

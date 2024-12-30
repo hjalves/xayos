@@ -93,29 +93,29 @@ class TextEditor:
     def set_cursor_color(self, color):
         self.cursor_color = color
 
-    def render_cursor(self, renderer):
+    def render_cursor(self, sdlrenderer):
         font_size = self.font_loader.get_font_size(self.font)
-        x = self.x + self.cursor_cx * font_size[0]
-        y = self.y + self.cursor_cy * font_size[1]
+        cursor_x = self.x + self.cursor_cx * font_size[0]
+        cursor_y = self.y + self.cursor_cy * font_size[1]
         sdlgfx.boxRGBA(
-            renderer,
-            x,
-            y + font_size[1] - 2,
-            x + font_size[0],
-            y + font_size[1],
+            sdlrenderer,
+            cursor_x,
+            cursor_y + font_size[1] - 2,
+            cursor_x + font_size[0],
+            cursor_y + font_size[1],
             *self.cursor_color
         )
         if self.cursor_char:
             self.font_loader.set_font(self.font)
             sdlgfx.stringRGBA(
-                renderer,
-                x,
-                y,
+                sdlrenderer,
+                cursor_x,
+                cursor_y,
                 self.cursor_char,
                 *self.cursor_char_color
             )
 
-    def render(self, renderer):
+    def render(self, sdlrenderer):
         text = self.text
         if isinstance(text, str):
             text = text.encode("utf-8")
@@ -128,7 +128,7 @@ class TextEditor:
         for i, line in enumerate(lines):
             y = self.y + i * font_size[1] + i * self.line_spacing
             sdlgfx.stringRGBA(
-                renderer,
+                sdlrenderer,
                 self.x,
                 y,
                 line,

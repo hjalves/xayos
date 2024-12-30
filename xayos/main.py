@@ -3,6 +3,7 @@ import logging
 import sys
 import ctypes
 import time
+from pathlib import Path
 from random import randint
 
 import sdl2
@@ -11,12 +12,16 @@ import sdl2.ext
 
 from . import colors
 from .fonts import FontLoader
+from .gamepad import GamepadViewer
 from .input import TextInputHandler
 from .logger import setup_logging
 from .starfield import StarField
 from .text import TextEditor, TextLine
 
 log = logging.getLogger(__name__)
+
+HERE = Path(__file__).parent
+RESOURCES_PATH = HERE / "resources"
 
 FPS_TARGET = 60
 
@@ -47,7 +52,7 @@ def setup_gamepads():
 def main():
     setup_logging(verbose=True)
     sdl2.ext.init(joystick=True, controller=True)
-    window = sdl2.ext.Window("XAYOS UI Prototype", size=(960, 540))
+    window = sdl2.ext.Window("Xayos Lunar Shell [POC]", size=(960, 540))
     window.show()
 
     setup_gamepads()
@@ -65,6 +70,10 @@ def main():
     log.info(f"Logical size: {width}x{height}")
     starfield = StarField(width, height)
 
+
+    gamepad_viewer = GamepadViewer()
+    gamepad_viewer.create_texture(context)
+
     font_loader = FontLoader()
     text_editor = TextEditor(
         font_loader,
@@ -78,15 +87,8 @@ def main():
     text_input.set_active_text_editor(text_editor)
 
     text_editor.set_text(
-        "This is a test of the text canvas \n"
-        "It should be able to render multiple lines\n"
-        "This is a really long line that should wrap around to the next line if\n"
-        " it gets too long\n"
-        "Here be dragons\n"
-        "\n"
-        "def main():\n"
-        "    print('Hello, World!')\n"
-        "    return 0\n"
+        "Xayos Lunar Shell - Spacepad\n"
+        "----------------------------\n"
     )
 
     date_time = TextLine(
@@ -137,6 +139,8 @@ def main():
         # Render the starfield
         context.clear(color=colors.BLACK)
         starfield.draw(context.sdlrenderer)
+
+        gamepad_viewer.render(context)
 
         text_editor.render_cursor(context.sdlrenderer)
         text_editor.render(context.sdlrenderer)
