@@ -81,6 +81,12 @@ class TextEditor:
         self.text = self.text[:-1]
         self.update_cursor_position()
 
+    def delete(self):
+        # TODO: for now delete the line
+        lines = self.text.split("\n")
+        self.text = "\n".join(lines[:-1])
+        self.update_cursor_position()
+
     def update_cursor_position(self):
         lines = self.text.split("\n")
         self.cursor_cx = len(lines[-1])

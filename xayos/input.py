@@ -3,7 +3,19 @@ import logging
 import sdl2
 
 from xayos import colors
-
+from xayos.gamepad import (
+    BUTTON_TRIGGERLEFT,
+    BUTTON_TRIGGERRIGHT,
+    BUTTON_LEFTSHOULDER,
+    BUTTON_A,
+    BUTTON_X,
+    BUTTON_Y,
+    BUTTON_B,
+    BUTTON_DPAD_DOWN,
+    BUTTON_DPAD_LEFT,
+    BUTTON_DPAD_UP,
+    BUTTON_DPAD_RIGHT,
+)
 
 log = logging.getLogger(__name__)
 
@@ -31,17 +43,34 @@ class TextInputHandler:
 
     def __init__(self, gamepad):
         self.gamepad = gamepad
+        self.gamepad.on_button_press = self.on_button_press
+        self.gamepad.on_button_release = self.on_button_release
         self.text_editor = None
         self.current_char = None
         self.cycled_elapsed = 0
-        self.r_modifier = False
-        self.l_modifier = False
-        self.l_shoulder = False
         self.uppercase = False
         self.caps_lock = False
 
     def set_active_text_editor(self, text_editor):
         self.text_editor = text_editor
+
+    def on_button_press(self, button):
+        if button == BUTTON_TRIGGERRIGHT:
+            self.on_trigger_right(pressed_state=True)
+            return
+        if button == BUTTON_TRIGGERLEFT:
+            self.on_trigger_left(pressed_state=True)
+            return
+        self.on_controller_button_down(button)
+
+    def on_button_release(self, button):
+        if button == BUTTON_TRIGGERRIGHT:
+            self.on_trigger_right(pressed_state=False)
+            return
+        if button == BUTTON_TRIGGERLEFT:
+            self.on_trigger_left(pressed_state=False)
+            return
+        self.on_controller_button_up(button)
 
     def on_key_down(self, key):
         if key == sdl2.SDLK_F1:
@@ -64,28 +93,26 @@ class TextInputHandler:
             log.debug(f"Key pressed: {key}")
 
     def on_controller_button_down(self, button):
-        log.debug(f"Controller button pressed: {button}")
-        if button == sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+        if button == BUTTON_LEFTSHOULDER:
             self.toggle_uppercase()
             log.debug(f"Uppercase: {self.uppercase}")
-            self.l_shoulder = True
             return
 
-        if self.r_modifier:
+        if self.gamepad.is_pressed(BUTTON_TRIGGERRIGHT):
             self.on_controller_button_down_r_modifier(button)
             return
-        if self.l_modifier:
+        if self.gamepad.is_pressed(BUTTON_TRIGGERLEFT):
             self.on_controller_button_down_l_modifier(button)
             return
         mapping = {
-            sdl2.SDL_CONTROLLER_BUTTON_A: self.S1_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_X: self.S2_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_Y: self.S3_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_B: self.S4_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN: self.S5_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT: self.S6_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP: self.S7_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT: self.S8_KEYS,
+            BUTTON_A: self.S1_KEYS,
+            BUTTON_X: self.S2_KEYS,
+            BUTTON_Y: self.S3_KEYS,
+            BUTTON_B: self.S4_KEYS,
+            BUTTON_DPAD_DOWN: self.S5_KEYS,
+            BUTTON_DPAD_LEFT: self.S6_KEYS,
+            BUTTON_DPAD_UP: self.S7_KEYS,
+            BUTTON_DPAD_RIGHT: self.S8_KEYS,
         }
         if button in mapping:
             self.cycle(chars=mapping[button])
@@ -93,28 +120,31 @@ class TextInputHandler:
             log.debug(f"Unhandled button: {button}")
 
     def on_controller_button_down_r_modifier(self, button):
-        if button == sdl2.SDL_CONTROLLER_BUTTON_A:
+        if button == BUTTON_A:
             self.flush_char()
             self.text_editor.put_char("\n")
-        elif button == sdl2.SDL_CONTROLLER_BUTTON_X:
+        elif button == BUTTON_X:
             self.flush_char()
             self.text_editor.put_char(" ")
-        elif button == sdl2.SDL_CONTROLLER_BUTTON_B:
+        elif button == BUTTON_B:
             self.flush_char()
             self.text_editor.backspace()
+        elif button == BUTTON_Y:
+            self.flush_char()
+            self.text_editor.delete()
         else:
             log.debug(f"Unhandled button: {button}")
 
     def on_controller_button_down_l_modifier(self, button):
         mapping = {
-            sdl2.SDL_CONTROLLER_BUTTON_A: self.L1_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_X: self.L2_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_Y: self.L3_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_B: self.L4_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT: self.L5_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN: self.L6_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT: self.L7_KEYS,
-            sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP: self.L8_KEYS,
+            BUTTON_A: self.L1_KEYS,
+            BUTTON_X: self.L2_KEYS,
+            BUTTON_Y: self.L3_KEYS,
+            BUTTON_B: self.L4_KEYS,
+            BUTTON_DPAD_LEFT: self.L5_KEYS,
+            BUTTON_DPAD_DOWN: self.L6_KEYS,
+            BUTTON_DPAD_RIGHT: self.L7_KEYS,
+            BUTTON_DPAD_UP: self.L8_KEYS,
         }
         if button in mapping:
             self.cycle(chars=mapping[button])
@@ -122,36 +152,23 @@ class TextInputHandler:
             log.debug(f"Unhandled button: {button}")
 
     def on_controller_button_up(self, button):
-        log.debug(f"Controller button released: {button}")
         if button == sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            self.l_shoulder = False
             if self.caps_lock:
                 self.caps_lock = False
 
-    def on_controller_axis_motion(self, axis, value):
-        if axis == sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
-            threshold = self.TRIGGER_THRESHOLD
-            if value >= threshold:
-                # log.debug(f"Right trigger pressed")
-                self.flush_char()
-                self.r_modifier = True
-                self.text_editor.set_cursor_color(colors.RED)
-            else:
-                # log.debug(f"Right trigger released")
-                self.r_modifier = False
-                self.text_editor.set_cursor_color(colors.PINK)
+    def on_trigger_left(self, pressed_state):
+        if pressed_state:
+            self.text_editor.set_cursor_color(colors.GREEN)
+        else:
+            self.flush_char()
+            self.text_editor.set_cursor_color(colors.PINK)
 
-        elif axis == sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT:
-            threshold = self.TRIGGER_THRESHOLD
-            if value >= threshold:
-                # log.debug(f"Left trigger pressed")
-                self.l_modifier = True
-                self.text_editor.set_cursor_color(colors.GREEN)
-            else:
-                # log.debug(f"Left trigger released")
-                self.flush_char()
-                self.l_modifier = False
-                self.text_editor.set_cursor_color(colors.PINK)
+    def on_trigger_right(self, pressed_state):
+        if pressed_state:
+            self.flush_char()
+            self.text_editor.set_cursor_color(colors.RED)
+        else:
+            self.text_editor.set_cursor_color(colors.PINK)
 
     def update(self, elapsed):
         if self.current_char:
@@ -167,7 +184,8 @@ class TextInputHandler:
             self.text_editor.put_char(current_char)
             self.text_editor.set_cursor_char(None)
             self.current_char = None
-            if self.l_shoulder:
+            # if left shoulder is pressed while a char is flushed, enable caps lock
+            if self.gamepad.is_pressed(BUTTON_LEFTSHOULDER):
                 self.caps_lock = True
             elif not self.caps_lock:
                 self.disable_uppercase()

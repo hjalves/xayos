@@ -88,8 +88,8 @@ def main():
     text_input.set_active_text_editor(text_editor)
 
     text_editor.set_text(
-        "Xayos Lunar Shell - Spacepad\n"
-        "----------------------------\n"
+        "Welcome to Spacepad!\n"
+        "--------------------\n"
     )
 
     date_time = TextLine(

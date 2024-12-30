@@ -38,7 +38,7 @@ log = logging.getLogger(__name__)
 
 class GamepadState:
 
-    def __init__(self):
+    def __init__(self, on_button_press=None, on_button_release=None):
         # self.controller = None
         # self.controller_id = None
         self.trigger_threshold = 32767 // 2
@@ -69,6 +69,8 @@ class GamepadState:
             BUTTON_TRIGGERLEFT: False,
             BUTTON_TRIGGERRIGHT: False,
         }
+        self.on_button_press = on_button_press
+        self.on_button_release = on_button_release
 
     def is_pressed(self, button):
         return self.button_states[button]
@@ -121,9 +123,13 @@ class GamepadState:
         if value >= self.trigger_threshold:
             log.debug(f"Trigger pressed: {button}")
             self.button_states[button] = True
+            if self.on_button_press:
+                self.on_button_press(button)
         else:
             log.debug(f"Trigger released: {button}")
             self.button_states[button] = False
+            if self.on_button_release:
+                self.on_button_release(button)
 
     def handle_button_down(self, cbutton):
         assert cbutton.state == sdl2.SDL_PRESSED
@@ -134,6 +140,8 @@ class GamepadState:
             return
         log.debug(f"Button pressed: {cbutton.button} (which: {cbutton.which})")
         self.button_states[cbutton.button] = True
+        if self.on_button_press:
+            self.on_button_press(cbutton.button)
 
     def handle_button_up(self, cbutton):
         assert cbutton.state == sdl2.SDL_RELEASED
@@ -144,6 +152,8 @@ class GamepadState:
             return
         log.debug(f"Button released: {cbutton.button} (which: {cbutton.which})")
         self.button_states[cbutton.button] = False
+        if self.on_button_release:
+            self.on_button_release(cbutton.button)
 
     def handle_device_added(self, cdevice):
         pass
