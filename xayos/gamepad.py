@@ -1,63 +1,167 @@
-from pathlib import Path
 import logging
 
 import sdl2
-import sdl2.ext
-from sdl2.ext import Renderer
 
-from . import colors
+from xayos import colors
 
-HERE = Path(__file__).parent
-RESOURCES_PATH = HERE / "resources"
+# Buttons and Axis constants
+
+BUTTON_A = sdl2.SDL_CONTROLLER_BUTTON_A
+BUTTON_B = sdl2.SDL_CONTROLLER_BUTTON_B
+BUTTON_X = sdl2.SDL_CONTROLLER_BUTTON_X
+BUTTON_Y = sdl2.SDL_CONTROLLER_BUTTON_Y
+BUTTON_BACK = sdl2.SDL_CONTROLLER_BUTTON_BACK
+BUTTON_GUIDE = sdl2.SDL_CONTROLLER_BUTTON_GUIDE
+BUTTON_START = sdl2.SDL_CONTROLLER_BUTTON_START
+BUTTON_LEFTSTICK = sdl2.SDL_CONTROLLER_BUTTON_LEFTSTICK
+BUTTON_RIGHTSTICK = sdl2.SDL_CONTROLLER_BUTTON_RIGHTSTICK
+BUTTON_LEFTSHOULDER = sdl2.SDL_CONTROLLER_BUTTON_LEFTSHOULDER
+BUTTON_RIGHTSHOULDER = sdl2.SDL_CONTROLLER_BUTTON_RIGHTSHOULDER
+BUTTON_DPAD_UP = sdl2.SDL_CONTROLLER_BUTTON_DPAD_UP
+BUTTON_DPAD_DOWN = sdl2.SDL_CONTROLLER_BUTTON_DPAD_DOWN
+BUTTON_DPAD_LEFT = sdl2.SDL_CONTROLLER_BUTTON_DPAD_LEFT
+BUTTON_DPAD_RIGHT = sdl2.SDL_CONTROLLER_BUTTON_DPAD_RIGHT
+
+AXIS_LEFTX = sdl2.SDL_CONTROLLER_AXIS_LEFTX
+AXIS_LEFTY = sdl2.SDL_CONTROLLER_AXIS_LEFTY
+AXIS_RIGHTX = sdl2.SDL_CONTROLLER_AXIS_RIGHTX
+AXIS_RIGHTY = sdl2.SDL_CONTROLLER_AXIS_RIGHTY
+AXIS_TRIGGERLEFT = sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT
+AXIS_TRIGGERRIGHT = sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT
+
+BUTTON_TRIGGERLEFT = 100
+BUTTON_TRIGGERRIGHT = 101
+
 
 log = logging.getLogger(__name__)
 
 
-class GamepadViewer:
+class GamepadState:
+
     def __init__(self):
-        # Load png image
-        self.img_surface = sdl2.ext.load_img(str(RESOURCES_PATH / "ds4.png"))
-        self.img_texture = None
-        # Create a surface 45x30
-        self.drawing_surface = sdl2.SDL_CreateRGBSurface(0, 45, 30, 32, 0, 0, 0, 0)
-        self.a_position = (34, 12)
-        self.b_position = (36, 10)
-        self.x_position = (32, 10)
-        self.y_position = (34, 8)
-        self.dpad_r_position = (12, 10)
-        self.dpad_d_position = (10, 12)
-        self.dpad_l_position = (8, 10)
-        self.dpad_u_position = (10, 8)
+        # self.controller = None
+        # self.controller_id = None
+        self.trigger_threshold = 32767 // 2
+        self.axis_states = {
+            AXIS_LEFTX: 0,
+            AXIS_LEFTY: 0,
+            AXIS_RIGHTX: 0,
+            AXIS_RIGHTY: 0,
+            AXIS_TRIGGERLEFT: 0,
+            AXIS_TRIGGERRIGHT: 0,
+        }
+        self.button_states = {
+            BUTTON_A: False,
+            BUTTON_B: False,
+            BUTTON_X: False,
+            BUTTON_Y: False,
+            BUTTON_BACK: False,
+            BUTTON_GUIDE: False,
+            BUTTON_START: False,
+            BUTTON_LEFTSTICK: False,
+            BUTTON_RIGHTSTICK: False,
+            BUTTON_LEFTSHOULDER: False,
+            BUTTON_RIGHTSHOULDER: False,
+            BUTTON_DPAD_UP: False,
+            BUTTON_DPAD_DOWN: False,
+            BUTTON_DPAD_LEFT: False,
+            BUTTON_DPAD_RIGHT: False,
+            BUTTON_TRIGGERLEFT: False,
+            BUTTON_TRIGGERRIGHT: False,
+        }
 
-    def create_texture(self, renderer):
-        self.img_texture = sdl2.ext.Texture(renderer, self.img_surface)
+    def is_pressed(self, button):
+        return self.button_states[button]
 
-    def draw_pixel(self):
-        dpad_color = colors.LIGHT_GREY_2
-        Renderer(self.img_surface).draw_point(self.a_position, colors.DODGER_BLUE)
-        Renderer(self.img_surface).draw_point(self.b_position, colors.RED)
-        Renderer(self.img_surface).draw_point(self.x_position, colors.MAGENTA)
-        Renderer(self.img_surface).draw_point(self.y_position, colors.GREEN)
-        Renderer(self.img_surface).draw_point(self.dpad_r_position, dpad_color)
-        Renderer(self.img_surface).draw_point(self.dpad_d_position, dpad_color)
-        Renderer(self.img_surface).draw_point(self.dpad_l_position, dpad_color)
-        Renderer(self.img_surface).draw_point(self.dpad_u_position, dpad_color)
+    def buttons_pressed(self):
+        return [button for button, state in self.button_states.items() if state]
 
-    def render(self, renderer):
-        sdl2.SDL_BlitSurface(self.img_surface, None, self.drawing_surface, None)
+    def handle_event(self, event):
+        match event.type:
+            case sdl2.SDL_CONTROLLERAXISMOTION:
+                self.handle_axis_motion(event.caxis)
+            case sdl2.SDL_CONTROLLERBUTTONDOWN:
+                self.handle_button_down(event.cbutton)
+            case sdl2.SDL_CONTROLLERBUTTONUP:
+                self.handle_button_up(event.cbutton)
+            case sdl2.SDL_CONTROLLERDEVICEADDED:
+                self.handle_device_added(event.cdevice)
+            case sdl2.SDL_CONTROLLERDEVICEREMOVED:
+                self.handle_device_removed(event.cdevice)
+            case sdl2.SDL_CONTROLLERDEVICEREMAPPED:
+                self.handle_device_remapped(event.cdevice)
+            case sdl2.SDL_CONTROLLERTOUCHPADDOWN:
+                self.handle_touchpad_down(event.ctouchpad)
+            case sdl2.SDL_CONTROLLERTOUCHPADMOTION:
+                self.handle_touchpad_motion(event.ctouchpad)
+            case sdl2.SDL_CONTROLLERTOUCHPADUP:
+                self.handle_touchpad_up(event.ctouchpad)
+            case sdl2.SDL_CONTROLLERSENSORUPDATE:
+                self.handle_sensor_update(event.csensor)
+            case _:
+                log.debug(f"Unhandled event: {event}")
 
-        self.draw_pixel()
-        screen_width, screen_height = renderer.logical_size
+    def handle_axis_motion(self, caxis):
+        if caxis.axis not in self.axis_states:
+            log.debug(f"Unknown axis motion: {caxis.axis} (value: {caxis.value})")
+            return
+        # log.debug(f"Axis motion: {caxis.axis} (value: {caxis.value})")
+        self.axis_states[caxis.axis] = caxis.value
+        if caxis.axis in (AXIS_TRIGGERLEFT, AXIS_TRIGGERRIGHT):
+            self.handle_trigger(caxis.axis, caxis.value)
 
-        # Create a texture
-        texture = sdl2.ext.Texture(renderer, self.drawing_surface)
+    def handle_trigger(self, axis, value):
+        if axis == AXIS_TRIGGERLEFT:
+            button = BUTTON_TRIGGERLEFT
+        elif axis == AXIS_TRIGGERRIGHT:
+            button = BUTTON_TRIGGERRIGHT
+        else:
+            log.debug(f"Unknown trigger axis: {axis}")
+            return
+        if value >= self.trigger_threshold:
+            log.debug(f"Trigger pressed: {button}")
+            self.button_states[button] = True
+        else:
+            log.debug(f"Trigger released: {button}")
+            self.button_states[button] = False
 
-        # Render the image
-        rect = sdl2.SDL_Rect()
-        rect.w, rect.h = texture.size
-        rect.w *= 2
-        rect.h *= 2
-        rect.x = screen_width - rect.w - 10
-        rect.y = screen_height - rect.h - 30
+    def handle_button_down(self, cbutton):
+        assert cbutton.state == sdl2.SDL_PRESSED
+        if cbutton.button not in self.button_states:
+            log.debug(
+                f"Unknown button pressed: {cbutton.button} (which: {cbutton.which})"
+            )
+            return
+        log.debug(f"Button pressed: {cbutton.button} (which: {cbutton.which})")
+        self.button_states[cbutton.button] = True
 
-        sdl2.SDL_RenderCopy(renderer.sdlrenderer, texture.tx, None, rect)
+    def handle_button_up(self, cbutton):
+        assert cbutton.state == sdl2.SDL_RELEASED
+        if cbutton.button not in self.button_states:
+            log.debug(
+                f"Unknown button released: {cbutton.button} (which: {cbutton.which})"
+            )
+            return
+        log.debug(f"Button released: {cbutton.button} (which: {cbutton.which})")
+        self.button_states[cbutton.button] = False
+
+    def handle_device_added(self, cdevice):
+        pass
+
+    def handle_device_removed(self, cdevice):
+        pass
+
+    def handle_device_remapped(self, cdevice):
+        pass
+
+    def handle_touchpad_down(self, ctouchpad):
+        pass
+
+    def handle_touchpad_motion(self, ctouchpad):
+        pass
+
+    def handle_touchpad_up(self, ctouchpad):
+        pass
+
+    def handle_sensor_update(self, csensor):
+        pass

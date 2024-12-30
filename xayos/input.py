@@ -4,11 +4,8 @@ import sdl2
 
 from xayos import colors
 
+
 log = logging.getLogger(__name__)
-
-
-class GamepadState:
-    pass
 
 
 class TextInputHandler:
@@ -26,14 +23,14 @@ class TextInputHandler:
     L1_KEYS = ("1", "2", "3")
     L2_KEYS = ("4", "5", "6")
     L3_KEYS = ("7", "8", "9")
-    L4_KEYS = ("0", )
-    L5_KEYS = ("(", "[", "{", "<", "\"", "'")
-    L6_KEYS = (".", ",", "?", "!", "_", ":", ";", "|" )
-    L7_KEYS = (")", "]", "}", ">", "\"", "'")
+    L4_KEYS = ("0",)
+    L5_KEYS = ("(", "[", "{", "<", '"', "'")
+    L6_KEYS = (".", ",", "?", "!", "_", ":", ";", "|")
+    L7_KEYS = (")", "]", "}", ">", '"', "'")
     L8_KEYS = ("-", "=", "+", "*", "/", "^", "~", "#", "%", "@")
 
-
-    def __init__(self):
+    def __init__(self, gamepad):
+        self.gamepad = gamepad
         self.text_editor = None
         self.current_char = None
         self.cycled_elapsed = 0
@@ -131,28 +128,27 @@ class TextInputHandler:
             if self.caps_lock:
                 self.caps_lock = False
 
-
     def on_controller_axis_motion(self, axis, value):
         if axis == sdl2.SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
             threshold = self.TRIGGER_THRESHOLD
             if value >= threshold:
-                #log.debug(f"Right trigger pressed")
+                # log.debug(f"Right trigger pressed")
                 self.flush_char()
                 self.r_modifier = True
                 self.text_editor.set_cursor_color(colors.RED)
             else:
-                #log.debug(f"Right trigger released")
+                # log.debug(f"Right trigger released")
                 self.r_modifier = False
                 self.text_editor.set_cursor_color(colors.PINK)
 
         elif axis == sdl2.SDL_CONTROLLER_AXIS_TRIGGERLEFT:
             threshold = self.TRIGGER_THRESHOLD
             if value >= threshold:
-                #log.debug(f"Left trigger pressed")
+                # log.debug(f"Left trigger pressed")
                 self.l_modifier = True
                 self.text_editor.set_cursor_color(colors.GREEN)
             else:
-                #log.debug(f"Left trigger released")
+                # log.debug(f"Left trigger released")
                 self.flush_char()
                 self.l_modifier = False
                 self.text_editor.set_cursor_color(colors.PINK)

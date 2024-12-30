@@ -1,5 +1,6 @@
 import sdl2.ext
 
+TRANSPARENT = sdl2.ext.Color(0, 0, 0, 0)
 AQUA = sdl2.ext.Color(0, 255, 255)
 BLACK = sdl2.ext.Color(0, 0, 0)
 BLUE = sdl2.ext.Color(0, 0, 255)
@@ -24,6 +25,8 @@ OLIVE = sdl2.ext.Color(128, 128, 0)
 ORANGE = sdl2.ext.Color(255, 165, 0)
 PINK = sdl2.ext.Color(255, 192, 203)
 PURPLE = sdl2.ext.Color(128, 0, 128)
+PURPLE_2 = sdl2.ext.Color(192, 0, 192)
+PURPLE_3 = sdl2.ext.Color(192, 0, 255)
 RED = sdl2.ext.Color(255, 0, 0)
 SILVER = sdl2.ext.Color(192, 192, 192)
 TEAL = sdl2.ext.Color(0, 128, 128)

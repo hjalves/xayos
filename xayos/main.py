@@ -12,7 +12,8 @@ import sdl2.ext
 
 from . import colors
 from .fonts import FontLoader
-from .gamepad import GamepadViewer
+from .gamepad import GamepadState
+from .gamepad_viewer import GamepadViewer
 from .input import TextInputHandler
 from .logger import setup_logging
 from .starfield import StarField
@@ -70,8 +71,8 @@ def main():
     log.info(f"Logical size: {width}x{height}")
     starfield = StarField(width, height)
 
-
-    gamepad_viewer = GamepadViewer()
+    gamepad_state = GamepadState()
+    gamepad_viewer = GamepadViewer(gamepad_state)
     gamepad_viewer.create_texture(context)
 
     font_loader = FontLoader()
@@ -83,7 +84,7 @@ def main():
         y=18,
         fg=colors.WHITE,
     )
-    text_input = TextInputHandler()
+    text_input = TextInputHandler(gamepad_state)
     text_input.set_active_text_editor(text_editor)
 
     text_editor.set_text(
@@ -111,12 +112,11 @@ def main():
             break
         # Check for key presses
         for event in events:
-            if event.type == sdl2.SDL_CONTROLLERAXISMOTION:
-                text_input.on_controller_axis_motion(event.caxis.axis, event.caxis.value)
-            elif event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
-                text_input.on_controller_button_down(event.cbutton.button)
-            elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
-                text_input.on_controller_button_up(event.cbutton.button)
+            # Handle all gamepad events
+            if sdl2.SDL_CONTROLLERAXISMOTION <= event.type <= sdl2.SDL_CONTROLLERSENSORUPDATE:
+                gamepad_state.handle_event(event)
+
+
             elif event.type == sdl2.SDL_KEYDOWN:
                 # Check if the user press alphanumeric keys
                 if is_alpha_numeric(event.key.keysym.sym):
