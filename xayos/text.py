@@ -1,11 +1,48 @@
-import sdl2
-import sdl2.ext
 from sdl2 import sdlgfx
 
 from . import colors
 
 
-class TextCanvas:
+class TextLine:
+    def __init__(
+        self,
+        font_loader,
+        x=0,
+        y=0,
+        font_name="10x20",
+        text=b"<Placeholder text>",
+        fg=colors.WHITE,
+    ):
+        self.font_loader = font_loader
+        self.font = font_name
+        self.text = text
+        assert isinstance(text, bytes), "Text must be a bytes object"
+        self.x = x
+        self.y = y
+        self.fg = fg
+        self.font_loader.set_font(self.font)
+
+    def set_text(self, text):
+        self.text = text
+
+    def render(self, renderer):
+        self.font_loader.set_font(self.font)
+        # font_size = self.font_loader.get_font_size(self.font)
+        sdlgfx.stringRGBA(
+            renderer,
+            self.x,
+            self.y,
+            self.text,
+            self.fg[0],
+            self.fg[1],
+            self.fg[2],
+            self.fg[3],
+        )
+
+
+
+
+class TextEditor:
     def __init__(
         self,
         font_loader,
@@ -24,22 +61,59 @@ class TextCanvas:
         self.fg = fg
         self.line_spacing = line_spacing
         self.font_loader.set_font(self.font)
+        self.cursor_cx = 0
+        self.cursor_cy = 0
+        self.cursor_char = None
+        self.cursor_color = colors.PINK
+        self.cursor_char_color = colors.PINK
 
     def set_text(self, text):
         self.text = text
+        self.update_cursor_position()
 
-    def render_cursor(self, renderer, cursor_x, cursor_y):
+    def put_char(self, char):
+        # TODO: put under cursor
+        self.text += char
+        self.update_cursor_position()
+
+    def backspace(self):
+        # TODO: remove char before cursor
+        self.text = self.text[:-1]
+        self.update_cursor_position()
+
+    def update_cursor_position(self):
+        lines = self.text.split("\n")
+        self.cursor_cx = len(lines[-1])
+        self.cursor_cy = len(lines) - 1
+
+    def set_cursor_char(self, char):
+        assert char is None or isinstance(char, bytes) and len(char) == 1
+        self.cursor_char = char
+
+    def set_cursor_color(self, color):
+        self.cursor_color = color
+
+    def render_cursor(self, renderer):
         font_size = self.font_loader.get_font_size(self.font)
-        x = self.x + cursor_x * font_size[0]
-        y = self.y + cursor_y * font_size[1]
+        x = self.x + self.cursor_cx * font_size[0]
+        y = self.y + self.cursor_cy * font_size[1]
         sdlgfx.boxRGBA(
             renderer,
             x,
             y + font_size[1] - 2,
             x + font_size[0],
             y + font_size[1],
-            *colors.RED
+            *self.cursor_color
         )
+        if self.cursor_char:
+            self.font_loader.set_font(self.font)
+            sdlgfx.stringRGBA(
+                renderer,
+                x,
+                y,
+                self.cursor_char,
+                *self.cursor_char_color
+            )
 
     def render(self, renderer):
         text = self.text

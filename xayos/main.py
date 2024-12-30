@@ -11,9 +11,10 @@ import sdl2.ext
 
 from . import colors
 from .fonts import FontLoader
+from .input import TextInputHandler
 from .logger import setup_logging
 from .starfield import StarField
-from .text import TextCanvas
+from .text import TextEditor, TextLine
 
 log = logging.getLogger(__name__)
 
@@ -30,11 +31,26 @@ def is_alpha_numeric(key):
     )
 
 
+def setup_gamepads():
+    log.info("Adding gamecontroller mappings")
+    sdl2.SDL_GameControllerAddMappingsFromFile(b"gamecontrollerdb.txt")
+    num_joysticks = sdl2.SDL_NumJoysticks()
+    for i in range(num_joysticks):
+        if sdl2.SDL_IsGameController(i) == sdl2.SDL_TRUE:
+            log.info("Joystick {0} is controller".format(i))
+            pad = sdl2.SDL_GameControllerOpen(i)
+            log.info("Controller: {0}".format(sdl2.SDL_GameControllerName(pad)))
+
+
+
+
 def main():
     setup_logging(verbose=True)
     sdl2.ext.init(joystick=True, controller=True)
     window = sdl2.ext.Window("XAYOS UI Prototype", size=(960, 540))
     window.show()
+
+    setup_gamepads()
 
     flags = sdl2.SDL_RENDERER_PRESENTVSYNC
     context = sdl2.ext.Renderer(window, flags=flags)
@@ -50,19 +66,22 @@ def main():
     starfield = StarField(width, height)
 
     font_loader = FontLoader()
-    text_canvas = TextCanvas(
+    text_editor = TextEditor(
         font_loader,
         text="Hello, World!",
         font_name="10x20",
-        x=40,
-        y=40,
+        x=18,
+        y=18,
         fg=colors.WHITE,
     )
+    text_input = TextInputHandler()
+    text_input.set_active_text_editor(text_editor)
 
-    text_canvas.set_text(
+    text_editor.set_text(
         "This is a test of the text canvas \n"
         "It should be able to render multiple lines\n"
-        "This is a really long line that should wrap around to the next line if it gets too long\n"
+        "This is a really long line that should wrap around to the next line if\n"
+        " it gets too long\n"
         "Here be dragons\n"
         "\n"
         "def main():\n"
@@ -70,18 +89,18 @@ def main():
         "    return 0\n"
     )
 
-    date_time_placeholder = "YYYY-mm-dd HH:MM:SS"
-    date_time = TextCanvas(
+    date_time = TextLine(
         font_loader,
-        x=width - len(date_time_placeholder) * 9 - 10,
+        x=width - len("YYYY-mm-dd HH:MM:SS") * 9 - 10,
         y=height - 18 - 10,
-        text="YYYY-mm-dd HH:MM:SS",
+        text=b"YYYY-mm-dd HH:MM:SS",
         font_name="9x18B",
         fg=colors.GREY,
     )
 
     # Wait until the user closes the window
     ticks = sdl2.SDL_GetTicks()
+    elapsed = 0
     running = True
     while running:
         # Process events
@@ -90,29 +109,37 @@ def main():
             break
         # Check for key presses
         for event in events:
-            if event.type == sdl2.SDL_KEYDOWN:
-                # Check if the user press alpha-numeric keys
+            if event.type == sdl2.SDL_CONTROLLERAXISMOTION:
+                text_input.on_controller_axis_motion(event.caxis.axis, event.caxis.value)
+            elif event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
+                text_input.on_controller_button_down(event.cbutton.button)
+            elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
+                text_input.on_controller_button_up(event.cbutton.button)
+            elif event.type == sdl2.SDL_KEYDOWN:
+                # Check if the user press alphanumeric keys
                 if is_alpha_numeric(event.key.keysym.sym):
-                    text_canvas.text += chr(event.key.keysym.sym)
+                    text_editor.set_text(text_editor.text + chr(event.key.keysym.sym))
                 elif event.key.keysym.sym == sdl2.SDLK_BACKSPACE:
-                    text_canvas.text = text_canvas.text[:-1]
+                    text_editor.set_text(text_editor.text[:-1])
                 elif event.key.keysym.sym == sdl2.SDLK_RETURN:
-                    text_canvas.text += "\n"
+                    text_editor.set_text(text_editor.text + "\n")
                 elif event.key.keysym.sym == sdl2.SDLK_F11:
                     toggle_fullscreen(window)
+                else:
+                    text_input.on_key_down(event.key.keysym.sym)
 
         # Update the date and time
-        date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S"))
+        date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
+
+        # Update the text editor
+        text_input.update(elapsed)
 
         # Render the starfield
         context.clear(color=colors.BLACK)
         starfield.draw(context.sdlrenderer)
 
-        lines = text_canvas.text.split("\n")
-        last_pos = len(lines[-1])
-
-        text_canvas.render_cursor(context.sdlrenderer, last_pos, len(lines) - 1)
-        text_canvas.render(context.sdlrenderer)
+        text_editor.render_cursor(context.sdlrenderer)
+        text_editor.render(context.sdlrenderer)
 
         date_time.render(context.sdlrenderer)
         context.present()
@@ -130,5 +157,7 @@ def toggle_fullscreen(window):
     if sdl2.SDL_GetWindowFlags(window.window) & sdl2.SDL_WINDOW_FULLSCREEN:
         flags = 0
     result = sdl2.SDL_SetWindowFullscreen(window.window, flags)
+    # Hide the mouse cursor when in fullscreen mode
+    sdl2.SDL_ShowCursor(0 if flags else 1)
     if result != 0:
         log.error("Failed to toggle fullscreen mode")
