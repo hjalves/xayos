@@ -19,6 +19,9 @@ from xayos.gamepad import (
 
 log = logging.getLogger(__name__)
 
+class SimpleInputHandler:
+    pass
+
 
 class TextInputHandler:
     TRIGGER_THRESHOLD = 20000
@@ -43,7 +46,7 @@ class TextInputHandler:
 
     def __init__(self, gamepad=None):
         self.gamepad = None
-        self.text_editor = None
+        self.active_widget = None
         self.current_char = None
         self.cycled_elapsed = 0
         self.uppercase = False
@@ -62,8 +65,8 @@ class TextInputHandler:
         self.gamepad.clear_event_callbacks()
         self.gamepad = None
 
-    def set_active_text_editor(self, text_editor):
-        self.text_editor = text_editor
+    def set_active_widget(self, text_editor):
+        self.active_widget = text_editor
 
     def on_button_press(self, button):
         if button in (BUTTON_TRIGGERRIGHT, BUTTON_TRIGGERLEFT):
@@ -127,16 +130,16 @@ class TextInputHandler:
     def on_controller_button_down_r_modifier(self, button):
         if button == BUTTON_A:
             self.flush_char()
-            self.text_editor.put_char("\n")
+            self.active_widget.put_char("\n")
         elif button == BUTTON_X:
             self.flush_char()
-            self.text_editor.put_char(" ")
+            self.active_widget.put_char(" ")
         elif button == BUTTON_B:
             self.flush_char()
-            self.text_editor.backspace()
+            self.active_widget.backspace()
         elif button == BUTTON_Y:
             self.flush_char()
-            self.text_editor.delete()
+            self.active_widget.delete()
         else:
             log.debug(f"Unhandled button: {button}")
 
@@ -170,11 +173,11 @@ class TextInputHandler:
                 self.flush_char()
         # Update cursor color
         if self.gamepad.is_pressed(BUTTON_TRIGGERRIGHT):
-            self.text_editor.set_cursor_color(colors.RED)
+            self.active_widget.set_cursor_color(colors.RED)
         elif self.gamepad.is_pressed(BUTTON_TRIGGERLEFT):
-            self.text_editor.set_cursor_color(colors.GREEN)
+            self.active_widget.set_cursor_color(colors.GREEN)
         else:
-            self.text_editor.set_cursor_color(colors.PINK)
+            self.active_widget.set_cursor_color(colors.PINK)
 
     def update(self, elapsed):
         if self.current_char:
@@ -187,8 +190,8 @@ class TextInputHandler:
             current_char = self.current_char
             if self.uppercase:
                 current_char = current_char.upper()
-            self.text_editor.put_char(current_char)
-            self.text_editor.set_cursor_char(None)
+            self.active_widget.put_char(current_char)
+            self.active_widget.set_cursor_char(None)
             self.current_char = None
             # if left shoulder is pressed while a char is flushed, enable caps lock
             if self.gamepad.is_pressed(BUTTON_LEFTSHOULDER):
@@ -201,7 +204,7 @@ class TextInputHandler:
             current_char = self.current_char
             if self.uppercase:
                 current_char = current_char.upper()
-            self.text_editor.set_cursor_char(current_char.encode())
+            self.active_widget.set_cursor_char(current_char.encode())
 
     def toggle_uppercase(self):
         self.uppercase = not self.uppercase
@@ -225,5 +228,5 @@ class TextInputHandler:
         self.current_char = chars[pos]
         self.cycled_elapsed = 0
         log.debug(f"Cycling char: {self.current_char}")
-        if self.text_editor:
+        if self.active_widget:
             self.update_cursor_char()
