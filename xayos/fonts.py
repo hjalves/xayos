@@ -1,3 +1,4 @@
+import ctypes
 import logging
 import re
 from pathlib import Path
@@ -43,8 +44,9 @@ class FontLoader:
         self.font_data[font_name] = (width, height, font_data)
 
     def set_font(self, font_name=None):
-        if font_name == self.current_font:
-            return
+        # This optimization does not work for some reason!
+        # if font_name == self.current_font:
+        #     return
         if font_name is None:
             sdlgfx.gfxPrimitivesSetFont(None, 0, 0)
             return

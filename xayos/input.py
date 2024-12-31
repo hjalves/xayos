@@ -35,21 +35,32 @@ class TextInputHandler:
     L1_KEYS = ("1", "2", "3")
     L2_KEYS = ("4", "5", "6")
     L3_KEYS = ("7", "8", "9")
-    L4_KEYS = ("0",)
+    L4_KEYS = ("0", ".")
     L5_KEYS = ("(", "[", "{", "<", '"', "'")
     L6_KEYS = (".", ",", "?", "!", "_", ":", ";", "|")
     L7_KEYS = (")", "]", "}", ">", '"', "'")
     L8_KEYS = ("-", "=", "+", "*", "/", "^", "~", "#", "%", "@")
 
-    def __init__(self, gamepad):
-        self.gamepad = gamepad
-        self.gamepad.on_button_press = self.on_button_press
-        self.gamepad.on_button_release = self.on_button_release
+    def __init__(self, gamepad=None):
+        self.gamepad = None
         self.text_editor = None
         self.current_char = None
         self.cycled_elapsed = 0
         self.uppercase = False
         self.caps_lock = False
+        if gamepad:
+            self.connect_gamepad(gamepad)
+
+    def connect_gamepad(self, gamepad):
+        self.gamepad = gamepad
+        self.gamepad.set_callbacks(
+            on_button_press=self.on_button_press,
+            on_button_release=self.on_button_release,
+        )
+
+    def disconnect_gamepad(self):
+        self.gamepad.clear_event_callbacks()
+        self.gamepad = None
 
     def set_active_text_editor(self, text_editor):
         self.text_editor = text_editor

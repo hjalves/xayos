@@ -33,8 +33,9 @@ log = logging.getLogger(__name__)
 
 
 class GamepadViewer:
-    def __init__(self, gamepad_state):
+    def __init__(self, gamepad_state, scale=2):
         self.gamepad_state = gamepad_state
+        self.scale = scale
         # Load png image
         self.img_surface = sdl2.ext.load_img(str(RESOURCES_PATH / "ds4.png"))
         self.img_texture = None
@@ -132,8 +133,8 @@ class GamepadViewer:
         # Render the image
         rect = sdl2.SDL_Rect()
         rect.w, rect.h = texture.size
-        rect.w *= 4
-        rect.h *= 4
+        rect.w *= self.scale
+        rect.h *= self.scale
         rect.x = screen_width - rect.w - 10
         rect.y = screen_height - rect.h - 30
 

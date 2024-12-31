@@ -36,7 +36,7 @@ BUTTON_TRIGGERRIGHT = 101
 log = logging.getLogger(__name__)
 
 
-class GamepadState:
+class GamepadHandler:
 
     def __init__(self, on_button_press=None, on_button_release=None):
         # self.controller = None
@@ -69,8 +69,40 @@ class GamepadState:
             BUTTON_TRIGGERLEFT: False,
             BUTTON_TRIGGERRIGHT: False,
         }
+        self.key_button_mapping = {
+            sdl2.SDLK_F1: BUTTON_A,
+            sdl2.SDLK_F2: BUTTON_X,
+            sdl2.SDLK_F3: BUTTON_Y,
+            sdl2.SDLK_F4: BUTTON_B,
+            sdl2.SDLK_F5: BUTTON_DPAD_DOWN,
+            sdl2.SDLK_F6: BUTTON_DPAD_LEFT,
+            sdl2.SDLK_F7: BUTTON_DPAD_UP,
+            sdl2.SDLK_F8: BUTTON_DPAD_RIGHT,
+            sdl2.SDLK_LSHIFT: BUTTON_TRIGGERLEFT,
+            sdl2.SDLK_RSHIFT: BUTTON_TRIGGERRIGHT,
+            sdl2.SDLK_LCTRL: BUTTON_LEFTSHOULDER,
+            sdl2.SDLK_RCTRL: BUTTON_RIGHTSHOULDER,
+            sdl2.SDLK_LALT: BUTTON_LEFTSTICK,
+            sdl2.SDLK_RALT: BUTTON_RIGHTSTICK,
+            sdl2.SDLK_F9: BUTTON_START,
+            sdl2.SDLK_F10: BUTTON_BACK,
+            sdl2.SDLK_F12: BUTTON_GUIDE,
+
+        }
         self.on_button_press = on_button_press
         self.on_button_release = on_button_release
+
+    def set_callbacks(self, on_button_press=None, on_button_release=None):
+        if on_button_press:
+            assert self.on_button_press is None, "Callback already set"
+            self.on_button_press = on_button_press
+        if on_button_release:
+            assert self.on_button_release is None, "Callback already set"
+            self.on_button_release = on_button_release
+
+    def clear_event_callbacks(self):
+        self.on_button_press = None
+        self.on_button_release = None
 
     def is_pressed(self, button):
         return self.button_states[button]
@@ -100,6 +132,10 @@ class GamepadState:
                 self.handle_touchpad_up(event.ctouchpad)
             case sdl2.SDL_CONTROLLERSENSORUPDATE:
                 self.handle_sensor_update(event.csensor)
+            case sdl2.SDL_KEYDOWN:
+                self.handle_key_down(event.key)
+            case sdl2.SDL_KEYUP:
+                self.handle_key_up(event.key)
             case _:
                 log.debug(f"Unhandled event: {event}")
 
@@ -175,3 +211,32 @@ class GamepadState:
 
     def handle_sensor_update(self, csensor):
         pass
+
+    # This is to simulate the gamepad with the keyboard
+
+    def generate_button_event(self, button, state, which=0):
+        event = sdl2.SDL_Event()
+        event.type = sdl2.SDL_CONTROLLERBUTTONDOWN if state else sdl2.SDL_CONTROLLERBUTTONUP
+        event.cbutton.which = which
+        event.cbutton.button = button
+        event.cbutton.state = state
+        return event
+
+
+
+    def handle_key_down(self, key):
+        if key.repeat:
+            return
+        log.debug(f"Key down: {key.keysym.sym}")
+        if key.keysym.sym in self.key_button_mapping:
+            button = self.key_button_mapping[key.keysym.sym]
+            event = self.generate_button_event(button, True)
+            self.handle_event(event)
+
+    def handle_key_up(self, key):
+        log.debug(f"Key up: {key.keysym.sym}")
+        if key.keysym.sym in self.key_button_mapping:
+            button = self.key_button_mapping[key.keysym.sym]
+            event = self.generate_button_event(button, False)
+            self.handle_event(event)
+
