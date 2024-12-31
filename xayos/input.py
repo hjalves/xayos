@@ -55,20 +55,14 @@ class TextInputHandler:
         self.text_editor = text_editor
 
     def on_button_press(self, button):
-        if button == BUTTON_TRIGGERRIGHT:
-            self.on_trigger_right(pressed_state=True)
-            return
-        if button == BUTTON_TRIGGERLEFT:
-            self.on_trigger_left(pressed_state=True)
+        if button in (BUTTON_TRIGGERRIGHT, BUTTON_TRIGGERLEFT):
+            self.on_trigger(button, pressed_state=True)
             return
         self.on_controller_button_down(button)
 
     def on_button_release(self, button):
-        if button == BUTTON_TRIGGERRIGHT:
-            self.on_trigger_right(pressed_state=False)
-            return
-        if button == BUTTON_TRIGGERLEFT:
-            self.on_trigger_left(pressed_state=False)
+        if button in (BUTTON_TRIGGERRIGHT, BUTTON_TRIGGERLEFT):
+            self.on_trigger(button, pressed_state=False)
             return
         self.on_controller_button_up(button)
 
@@ -156,17 +150,18 @@ class TextInputHandler:
             if self.caps_lock:
                 self.caps_lock = False
 
-    def on_trigger_left(self, pressed_state):
-        if pressed_state:
-            self.text_editor.set_cursor_color(colors.GREEN)
-        else:
-            self.flush_char()
-            self.text_editor.set_cursor_color(colors.PINK)
-
-    def on_trigger_right(self, pressed_state):
-        if pressed_state:
-            self.flush_char()
+    def on_trigger(self, button, pressed_state):
+        if button == BUTTON_TRIGGERLEFT:
+            if not pressed_state:
+                self.flush_char()
+        elif button == BUTTON_TRIGGERRIGHT:
+            if pressed_state:
+                self.flush_char()
+        # Update cursor color
+        if self.gamepad.is_pressed(BUTTON_TRIGGERRIGHT):
             self.text_editor.set_cursor_color(colors.RED)
+        elif self.gamepad.is_pressed(BUTTON_TRIGGERLEFT):
+            self.text_editor.set_cursor_color(colors.GREEN)
         else:
             self.text_editor.set_cursor_color(colors.PINK)
 

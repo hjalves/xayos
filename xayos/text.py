@@ -66,6 +66,7 @@ class TextEditor:
         self.cursor_char = None
         self.cursor_color = colors.PINK
         self.cursor_char_color = colors.PINK
+        self.update_cursor_position()
 
     def set_text(self, text):
         self.text = text

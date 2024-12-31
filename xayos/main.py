@@ -24,30 +24,8 @@ log = logging.getLogger(__name__)
 HERE = Path(__file__).parent
 RESOURCES_PATH = HERE / "resources"
 
+
 FPS_TARGET = 60
-
-
-def is_alpha_numeric(key):
-    return (
-        sdl2.SDLK_a <= key <= sdl2.SDLK_z
-        or sdl2.SDLK_0 <= key <= sdl2.SDLK_9
-        or key == sdl2.SDLK_SPACE
-        or key == sdl2.SDLK_UNDERSCORE
-        or key == sdl2.SDLK_MINUS
-    )
-
-
-def setup_gamepads():
-    log.info("Adding gamecontroller mappings")
-    sdl2.SDL_GameControllerAddMappingsFromFile(b"gamecontrollerdb.txt")
-    num_joysticks = sdl2.SDL_NumJoysticks()
-    for i in range(num_joysticks):
-        if sdl2.SDL_IsGameController(i) == sdl2.SDL_TRUE:
-            log.info("Joystick {0} is controller".format(i))
-            pad = sdl2.SDL_GameControllerOpen(i)
-            log.info("Controller: {0}".format(sdl2.SDL_GameControllerName(pad)))
-
-
 
 
 def main():
@@ -58,7 +36,8 @@ def main():
 
     setup_gamepads()
 
-    flags = sdl2.SDL_RENDERER_PRESENTVSYNC
+    # flags = sdl2.SDL_RENDERER_PRESENTVSYNC
+    flags = sdl2.SDL_RENDERER_SOFTWARE
     context = sdl2.ext.Renderer(window, flags=flags)
     sdl2.SDL_RenderSetLogicalSize(context.sdlrenderer, 960, 540)
 
@@ -78,7 +57,7 @@ def main():
     font_loader = FontLoader()
     text_editor = TextEditor(
         font_loader,
-        text="Hello, World!",
+        text="Hello, Galaxy!\n",
         font_name="10x20",
         x=18,
         y=18,
@@ -86,11 +65,6 @@ def main():
     )
     text_input = TextInputHandler(gamepad_state)
     text_input.set_active_text_editor(text_editor)
-
-    text_editor.set_text(
-        "Welcome to Spacepad!\n"
-        "--------------------\n"
-    )
 
     date_time = TextLine(
         font_loader,
@@ -100,12 +74,31 @@ def main():
         font_name="9x18B",
         fg=colors.GREY,
     )
+    fps_counter = TextLine(
+        font_loader,
+        x=10,
+        y=height - 18 - 10,
+        text=b"FPS: 60.0",
+        font_name="9x18B",
+        fg=colors.DARK_GREY_3,
+    )
+
+    fps_avg = 0  # Moving average of the frame rate
 
     # Wait until the user closes the window
     ticks = sdl2.SDL_GetTicks()
-    elapsed = 0
+
     running = True
     while running:
+        # Get the current time
+        last_ticks, ticks = ticks, sdl2.SDL_GetTicks()
+        elapsed = ticks - last_ticks
+
+        # Calculate the frame rate
+        if elapsed > 0:
+            fps = 1000 / elapsed
+            fps_avg = fps * 0.1 + fps_avg * 0.9 if fps_avg > 0 else fps
+
         # Process events
         events = sdl2.ext.get_events()
         if sdl2.ext.quit_requested(events):
@@ -113,9 +106,12 @@ def main():
         # Check for key presses
         for event in events:
             # Handle all gamepad events
-            if sdl2.SDL_CONTROLLERAXISMOTION <= event.type <= sdl2.SDL_CONTROLLERSENSORUPDATE:
+            if (
+                sdl2.SDL_CONTROLLERAXISMOTION
+                <= event.type
+                <= sdl2.SDL_CONTROLLERSENSORUPDATE
+            ):
                 gamepad_state.handle_event(event)
-
 
             elif event.type == sdl2.SDL_KEYDOWN:
                 # Check if the user press alphanumeric keys
@@ -132,6 +128,7 @@ def main():
 
         # Update the date and time
         date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
+        fps_counter.set_text(f"FPS: {fps_avg:.0f}".encode())
 
         # Update the text editor
         text_input.update(elapsed)
@@ -146,14 +143,18 @@ def main():
         text_editor.render(context.sdlrenderer)
 
         date_time.render(context.sdlrenderer)
+        fps_counter.render(context.sdlrenderer)
+
+        # Update the window
         context.present()
 
-        # Cap the frame rate
-        last_ticks, ticks = ticks, sdl2.SDL_GetTicks()
-        elapsed = ticks - last_ticks
-        # wait_time = (1000 // FPS_TARGET) - elapsed
-        # if wait_time > 0:
-        #     sdl2.SDL_Delay(wait_time)
+        # Limit the frame rate
+        if FPS_TARGET:
+            end_ticks = sdl2.SDL_GetTicks()
+            frame_time = end_ticks - ticks
+            wait_time = (1000 / FPS_TARGET) - frame_time
+            if wait_time > 0:
+                sdl2.SDL_Delay(int(wait_time))
 
 
 def toggle_fullscreen(window):
@@ -165,3 +166,24 @@ def toggle_fullscreen(window):
     sdl2.SDL_ShowCursor(0 if flags else 1)
     if result != 0:
         log.error("Failed to toggle fullscreen mode")
+
+
+def is_alpha_numeric(key):
+    return (
+        sdl2.SDLK_a <= key <= sdl2.SDLK_z
+        or sdl2.SDLK_0 <= key <= sdl2.SDLK_9
+        or key == sdl2.SDLK_SPACE
+        or key == sdl2.SDLK_UNDERSCORE
+        or key == sdl2.SDLK_MINUS
+    )
+
+
+def setup_gamepads():
+    log.info("Adding game controller mappings")
+    sdl2.SDL_GameControllerAddMappingsFromFile(b"gamecontrollerdb.txt")
+    num_joysticks = sdl2.SDL_NumJoysticks()
+    for i in range(num_joysticks):
+        if sdl2.SDL_IsGameController(i) == sdl2.SDL_TRUE:
+            log.info("Joystick {0} is controller".format(i))
+            pad = sdl2.SDL_GameControllerOpen(i)
+            log.info("Controller: {0}".format(sdl2.SDL_GameControllerName(pad)))
