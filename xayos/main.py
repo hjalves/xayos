@@ -69,6 +69,14 @@ class XayosLunarShell:
         )
         self.open_file()
         self.text_controller = TextController(self.gamepad, self.text_editor)
+        self.status_line = TextLine(
+            self.font_loader,
+            x=10,
+            y=height - 18 - 10,
+            text=b"[Status Line]",
+            font_name="9x18B",
+            fg=colors.GREY,
+        )
         self.date_time = TextLine(
             self.font_loader,
             x=width - len("YYYY-mm-dd HH:MM:SS") * 9 - 10,
@@ -79,11 +87,11 @@ class XayosLunarShell:
         )
         self.fps_counter = TextLine(
             self.font_loader,
-            x=10,
-            y=height - 18 - 10,
-            text=b"FPS: 60.0",
+            x=width - len("FPS") * 9 - 10,
+            y=10,
+            text=b"FPS",
             font_name="9x18B",
-            fg=colors.DARK_GREY_3,
+            fg=colors.DARK_GREY_2,
         )
 
     def init_sdl(self):
@@ -123,7 +131,6 @@ class XayosLunarShell:
         return gl_context
 
     def main(self):
-        setup_logging(verbose=True)
         self.init_sdl()
         # self.gl_context = self.init_opengl()
 
@@ -147,7 +154,8 @@ class XayosLunarShell:
 
             # Update the date and time
             self.date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
-            self.fps_counter.set_text(f"FPS: {self.fps_avg:.0f}".encode())
+            self.fps_counter.set_text(f"{self.fps_avg:3.0f}".encode())
+            self.status_line.set_text(self.text_controller.get_status_line().encode())
 
             if self.text_controller:
                 self.text_controller.update(elapsed_ms)
@@ -166,6 +174,7 @@ class XayosLunarShell:
 
             self.date_time.render(self.context.sdlrenderer)
             self.fps_counter.render(self.context.sdlrenderer)
+            self.status_line.render(self.context.sdlrenderer)
 
             # Update the window
             self.context.present()
@@ -289,6 +298,9 @@ def is_alpha_numeric(key):
 def parse_args():
     parser = argparse.ArgumentParser(description="Xayos Lunar Shell")
     parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
+    parser.add_argument(
         "--backend",
         type=str,
         help="Use the specified renderer backend (e.g. 'opengl', 'software')",
@@ -311,6 +323,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    setup_logging(verbose=args.verbose)
     app = XayosLunarShell(
         renderer_backend=args.backend,
         software_renderer=args.software,

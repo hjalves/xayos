@@ -56,6 +56,7 @@ class TextController:
     S6_KEYS = ("p", "q", "r", "s")
     S7_KEYS = ("t", "u", "v")
     S8_KEYS = ("w", "x", "y", "z")
+    S_CYCLES = (S1_KEYS, S2_KEYS, S3_KEYS, S4_KEYS, S5_KEYS, S6_KEYS, S7_KEYS, S8_KEYS)
 
     L1_KEYS = ("1", "2", "3")
     L2_KEYS = ("4", "5", "6")
@@ -77,6 +78,23 @@ class TextController:
         self.cycled_elapsed = 0
         self.uppercase = False
         self.caps_lock = False
+        self.status_cycle = ""
+        
+        self.help_line = ""
+        cycle_names = ["A", "X", "Y", "B", "v", "<", "^", ">"]
+        for i, groups in enumerate(self.S_CYCLES):
+            name = cycle_names[i]
+            self.help_line += f"[{name}]{''.join(groups)} "
+
+    def get_status_line(self):
+        if not self.status_cycle:
+            if self.uppercase:
+                return self.help_line.upper()
+            return self.help_line
+        
+        if self.uppercase:
+            return self.status_cycle.upper()
+        return self.status_cycle
 
     def handle_input(self, button, state):
         if state:
@@ -214,6 +232,7 @@ class TextController:
                 self.caps_lock = True
             elif not self.caps_lock:
                 self.disable_uppercase()
+            self.update_status_cycle()
 
     def update_cursor_char(self):
         if self.current_char:
@@ -246,3 +265,15 @@ class TextController:
         log.debug(f"Cycling char: {self.current_char}")
         if self.active_widget:
             self.update_cursor_char()
+        self.update_status_cycle(chars)
+
+    def update_status_cycle(self, current_cycle=None):
+        # Update status cycle
+        if current_cycle is None:
+            self.status_cycle = ""
+            return
+        cycle_chars = current_cycle
+        pos = current_cycle.index(self.current_char)
+        self.status_cycle = f" ".join(
+            ((f"[{c}]" if i == pos else c) for i, c in enumerate(cycle_chars))
+        )
