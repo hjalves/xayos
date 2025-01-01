@@ -34,9 +34,8 @@ class MenuController:
             self.on_button_press(button)
 
     def on_button_press(self, button):
-        log.debug(f"SimpleInputHandler: Button pressed: {button}")
         if button == BUTTON_A:
-            self.widget.select()
+            self.widget.choose()
         elif button == BUTTON_B:
             self.widget.cancel()
         elif button == BUTTON_DPAD_UP:
@@ -101,7 +100,7 @@ class TextController:
         self.uppercase = False
         self.caps_lock = False
         self.status_cycle = ""
-    
+
     def get_status_line(self):
         # Help line
         if not self.status_cycle:

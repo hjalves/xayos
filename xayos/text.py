@@ -23,13 +23,14 @@ class TextLine:
         self.font_loader.set_font(self.font)
 
     def set_text(self, text):
+        assert isinstance(text, bytes), "Text must be a bytes object"
         self.text = text
 
-    def render(self, renderer):
+    def render(self, sdlrenderer):
         self.font_loader.set_font(self.font)
         # font_size = self.font_loader.get_font_size(self.font)
         sdlgfx.stringRGBA(
-            renderer,
+            sdlrenderer,
             self.x,
             self.y,
             self.text,

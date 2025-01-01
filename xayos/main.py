@@ -16,13 +16,72 @@ from .input import MenuController, TextController
 from .logger import setup_logging
 from .menu import Menu
 from .starfield import StarField
+from .starpad import StarpadApp
 from .text import TextEditor, TextLine
 
 log = logging.getLogger(__name__)
 
 HERE = Path(__file__).parent
 RESOURCES_PATH = HERE / "resources"
-OUTDIR = HERE / "out"
+
+
+class XayosRootApplication:
+    MENU_ENTRIES = [
+        "Starpad",
+        "Voyager",
+        # "Spacewalk",
+        "Settings",
+        "About",
+        "Quit",
+    ]
+    MENU_HELP = {
+        "Spacewalk": "File manager",
+        "Starpad": "Text editor",
+        "Voyager": "Gemini client",
+        "Settings": "System settings",
+        "About": "About this shell",
+        "Quit": "Exit the shell",
+    }
+
+    def __init__(self, font_loader, gamepad, width, height, load_application=None):
+        self.running = True
+        self.font_loader = font_loader
+        self.menu = Menu(
+            font_loader,
+            width // 3,
+            2 * height // 3,
+            entries=self.MENU_ENTRIES,
+            active=True,
+            title="Lunar Shell",
+            background=colors.TRANSPARENT,
+        )
+        self.status_line = TextLine(
+            self.font_loader,
+            x=10,
+            y=height - 18 - 10,
+            text=b"[Status Line]",
+            font_name="9x18B",
+            fg=colors.GREY,
+        )
+        self.menu_controller = MenuController(self.menu)
+        self.load_application = load_application
+
+    def update(self, elapsed_ms):
+        help_text = self.MENU_HELP.get(self.menu.selected)
+        self.status_line.set_text(help_text.encode() if help_text else b"")
+        if self.menu.chosen:
+            if self.menu.chosen == "Quit":
+                self.running = False
+            else:
+                self.load_application(self.menu.chosen)
+                self.menu.chosen = None
+
+    def render(self, renderer):
+        self.menu.render(renderer)
+        self.status_line.render(renderer.sdlrenderer)
+
+    def handle_input(self, button, state):
+        self.menu_controller.handle_input(button, state)
 
 
 class XayosLunarShell:
@@ -52,47 +111,29 @@ class XayosLunarShell:
         self.renderer_flags |= sdl2.SDL_RENDERER_SOFTWARE if software_renderer else 0
         self.renderer_flags |= sdl2.SDL_RENDERER_PRESENTVSYNC if vsync else 0
         # Application objects
-        width, height = self.logical_size
+        self.width, self.height = self.logical_size
         self.font_loader = FontLoader()
         self.gamepad = GamepadHandler(on_input=self.handle_input)
         self.gamepad_watcher = GamepadViewer(self.gamepad)
-        self.starfield = StarField(width, height)
-        self.menu = Menu(self.font_loader, 200, 200, active=False)
-        self.menu_controller = MenuController(self.menu)
-        self.text_editor = TextEditor(
-            self.font_loader,
-            text="Hello, Galaxy!\n",
-            font_name="10x20",
-            x=18,
-            y=18,
-            fg=colors.LIGHT_GREY_2,
-        )
-        self.open_file()
-        self.text_controller = TextController(self.gamepad, self.text_editor)
-        self.status_line = TextLine(
-            self.font_loader,
-            x=10,
-            y=height - 18 - 10,
-            text=b"[Status Line]",
-            font_name="9x18B",
-            fg=colors.GREY,
-        )
+        self.starfield = StarField(self.width, self.height)
         self.date_time = TextLine(
             self.font_loader,
-            x=width - len("YYYY-mm-dd HH:MM:SS") * 9 - 10,
-            y=height - 18 - 10,
+            x=self.width - len("YYYY-mm-dd HH:MM:SS") * 9 - 10,
+            y=self.height - 18 - 10,
             text=b"YYYY-mm-dd HH:MM:SS",
             font_name="9x18B",
             fg=colors.GREY,
         )
         self.fps_counter = TextLine(
             self.font_loader,
-            x=width - len("FPS") * 9 - 10,
+            x=self.width - len("FPS") * 9 - 10,
             y=10,
             text=b"FPS",
             font_name="9x18B",
             fg=colors.DARK_GREY_2,
         )
+        self.application = None
+        self.load_root_application()
 
     def init_sdl(self):
         sdl2.ext.init(joystick=True, controller=True)
@@ -133,14 +174,9 @@ class XayosLunarShell:
     def main(self):
         self.init_sdl()
         # self.gl_context = self.init_opengl()
-
         self.setup_gamepads()
 
-        # Wait until the user closes the window
         ticks = sdl2.SDL_GetTicks()
-
-        #
-
         while self.running:
             # Calculate the elapsed time since the last frame
             last_ticks, ticks = ticks, sdl2.SDL_GetTicks()
@@ -150,58 +186,52 @@ class XayosLunarShell:
             # Handle events
             events = sdl2.ext.get_events()
             self.handle_events(events)
-            self.handle_menu()
 
-            # Update the date and time
+            # Update the date/time and FPS counter
             self.date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
             self.fps_counter.set_text(f"{self.fps_avg:3.0f}".encode())
-            if not self.menu.active:
-                self.status_line.set_text(self.text_controller.get_status_line().encode())
-            else:
-                self.status_line.set_text(b"[Menu]")
+            # Update the application
+            if self.application:
+                if self.application.running:
+                    self.application.update(elapsed_ms)
+                else:
+                    self.unload_application()
 
-            if self.text_controller:
-                self.text_controller.update(elapsed_ms)
-
-            # Render the starfield
+            # Render the scene
             self.context.clear(color=colors.BLACK)
-            self.starfield.draw(self.context.sdlrenderer)
-
+            self.starfield.draw(self.context)
+            if self.application:
+                self.application.render(self.context)
             self.gamepad_watcher.render(self.context)
-
-            self.text_editor.render_cursor(self.context.sdlrenderer)
-            self.text_editor.render(self.context.sdlrenderer)
-
-            if self.menu.active:
-                self.menu.render(self.context)
-
             self.date_time.render(self.context.sdlrenderer)
             self.fps_counter.render(self.context.sdlrenderer)
-            self.status_line.render(self.context.sdlrenderer)
-
             # Update the window
             self.context.present()
-            # Limit the frame rate
             self.limit_frame_rate(ticks)
 
-    def open_file(self):
-        # Get the latest file from the out directory
-        files = sorted(OUTDIR.glob("starpad-*.txt"))
-        if files:
-            filename = files[-1]
-            with open(filename, "rt") as f:
-                text = f.read()
-                self.text_editor.set_text(text)
-                log.info(f"Opened text file: {filename}")
+    def load_root_application(self):
+        assert self.application is None, "Application already loaded"
+        self.application = XayosRootApplication(
+            self.font_loader,
+            self.gamepad,
+            self.width,
+            self.height,
+            load_application=self.load_application,
+        )
 
-    def save_file(self):
-        template = "starpad-{timestamp}.txt"
-        OUTDIR.mkdir(parents=True, exist_ok=True)
-        filename = OUTDIR / template.format(timestamp=time.strftime("%Y%m%d-%H%M%S"))
-        text = self.text_editor.get_text()
-        with open(filename, "wt") as f:
-            f.write(text)
-        log.info(f"Saved text file: {filename}")
+    def load_application(self, app_name):
+        if app_name == "Starpad":
+            self.application = StarpadApp(self.font_loader, self.gamepad, 960, 540)
+        else:
+            log.error(f"Unknown application: {app_name}")
+
+    def unload_application(self):
+        # If the menu application is unloaded, then quit the shell
+        if isinstance(self.application, XayosRootApplication):
+            self.running = False
+            return
+        self.application = None
+        self.load_root_application()
 
     def handle_events(self, events):
         if sdl2.ext.quit_requested(events):
@@ -210,13 +240,10 @@ class XayosLunarShell:
         for event in events:
             # Handle all gamepad events
             if event.type == sdl2.SDL_KEYDOWN:
-                # Check for the ESC key to exit the program
-                # if event.key.keysym.sym == sdl2.SDLK_ESCAPE:
-                #     self.running = False
                 # Check for the F11 key to toggle fullscreen mode
                 if event.key.keysym.sym == sdl2.SDLK_F11:
                     self.toggle_fullscreen()
-            # Handle all gamepad events
+            # Handle all gamepad events and some keyboard events
             self.gamepad.handle_event(event)
 
     def handle_input(self, button, state):
@@ -229,57 +256,35 @@ class XayosLunarShell:
             and state
         ):
             self.toggle_fullscreen()
-        if button == BUTTON_START and state:
-            self.toggle_menu()
-        if self.menu.active:
-            self.menu_controller.handle_input(button, state)
-        else:
-            self.text_controller.handle_input(button, state)
-
-    def handle_menu(self):
-        if self.menu.selected:
-            log.info(f"Selected menu item: {self.menu.selected}")
-            if self.menu.selected == "New File":
-                self.text_editor.clear()
-            elif self.menu.selected == "Open...":
-                self.open_file()
-            elif self.menu.selected in ("Save", "Save As..."):
-                self.save_file()
-            elif self.menu.selected == "Quit":
-                self.running = False
-            else:
-                log.warning(f"Unknown menu item: {self.menu.selected}")
-            self.menu.selected = None
-
-    def toggle_menu(self):
-        self.menu.active = not self.menu.active
-        # if self.menu.active:
-        #    self.menu.reset_selection()
+        if self.application:
+            self.application.handle_input(button, state)
 
     def renderer_info(self, sdlrenderer):
         info = sdl2.render.SDL_RendererInfo()
         sdl2.SDL_GetRendererInfo(sdlrenderer, info)
         log.info(f"Renderer: {info.name.decode()}")
 
-    def setup_gamepads(self):
-        log.info("Adding game controller mappings")
-        sdl2.SDL_GameControllerAddMappingsFromFile(b"gamecontrollerdb.txt")
+    def setup_gamepads(self, mapping_file="gamecontrollerdb.txt"):
+        path = str(RESOURCES_PATH / mapping_file)
+        log.info("Loading game controller mappings from %s", path)
+        if sdl2.SDL_GameControllerAddMappingsFromFile(path.encode()) != 0:
+            log.error("Failed to load game controller mappings")
         num_joysticks = sdl2.SDL_NumJoysticks()
         for i in range(num_joysticks):
             if sdl2.SDL_IsGameController(i) == sdl2.SDL_TRUE:
-                log.info("Joystick {0} is controller".format(i))
                 pad = sdl2.SDL_GameControllerOpen(i)
-                log.info("Controller: {0}".format(sdl2.SDL_GameControllerName(pad)))
+                name = sdl2.SDL_GameControllerName(pad)
+                log.info("Controller #%d: %s", i, name.decode())
 
     def toggle_fullscreen(self):
         flags = sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
         if sdl2.SDL_GetWindowFlags(self.window.window) & sdl2.SDL_WINDOW_FULLSCREEN:
             flags = 0
-        result = sdl2.SDL_SetWindowFullscreen(self.window.window, flags)
-        # Hide the mouse cursor when in fullscreen mode
-        sdl2.SDL_ShowCursor(0 if flags else 1)
-        if result != 0:
+        if sdl2.SDL_SetWindowFullscreen(self.window.window, flags) != 0:
             log.error("Failed to toggle fullscreen mode")
+        else:
+            # Hide the mouse cursor when in fullscreen mode
+            sdl2.SDL_ShowCursor(0 if flags else 1)
 
     def limit_frame_rate(self, start_ticks):
         if self.fps_target:
@@ -295,16 +300,6 @@ class XayosLunarShell:
             # weight the new frame rate by 10% and the average by 90%
             fps = 1000 / elapsed
             self.fps_avg = fps * 0.1 + self.fps_avg * 0.9 if self.fps_avg > 0 else fps
-
-
-def is_alpha_numeric(key):
-    return (
-        sdl2.SDLK_a <= key <= sdl2.SDLK_z
-        or sdl2.SDLK_0 <= key <= sdl2.SDLK_9
-        or key == sdl2.SDLK_SPACE
-        or key == sdl2.SDLK_UNDERSCORE
-        or key == sdl2.SDLK_MINUS
-    )
 
 
 def parse_args():

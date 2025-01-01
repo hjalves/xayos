@@ -37,7 +37,7 @@ class StarField:
     def set_speed(self, speed):
         self.z_speed = speed
 
-    def draw(self, sdlrenderer):
+    def draw(self, renderer):
         for star in self.stars:
             # Move the star closer to the screen.
             star.z -= self.z_speed
@@ -56,7 +56,9 @@ class StarField:
             factor = self.fov / (self.view_distance + star.z)
             x = int(star.x * factor + self.width / 2)
             y = int(-star.y * factor + self.height / 2)
-            sdlgfx.pixelRGBA(sdlrenderer, x, y, star.fill, star.fill, star.fill, 255)
+            sdlgfx.pixelRGBA(
+                renderer.sdlrenderer, x, y, star.fill, star.fill, star.fill, 255
+            )
             # if star.radius > 1:
             #     sdlgfx.filledCircleRGBA(
             #         renderer, x, y, int(star.radius), star.fill, star.fill, star.fill, 255

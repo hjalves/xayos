@@ -7,34 +7,39 @@ from xayos.gamepad import BUTTON_DPAD_DOWN, BUTTON_DPAD_UP, BUTTON_A, BUTTON_B
 
 log = logging.getLogger(__name__)
 
+DEFAULT_BACKGROUND = sdl2.ext.Color(32, 32, 32, 0xDD)
+
 
 class Menu:
-    def __init__(self, font_loader, width, height, active=False):
+    def __init__(
+        self,
+        font_loader,
+        width,
+        height,
+        entries,
+        active=False,
+        title="Menu",
+        background=DEFAULT_BACKGROUND,
+    ):
         self.gamepad = None
         self.font_loader = font_loader
+        self.title = title
         self.title_font = "9x18B"
         self.font = "10x20"
-        self.background = colors.DARK_GREY_1[0:3] + (0xDD,)
+        self.background = background
         self.width = width
         self.height = height
         self.surface = sdl2.SDL_CreateRGBSurface(
             0, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
         )
-        self.entries = [
-            "New File",
-            "Open...",
-            "Save",
-            "Save As...",
-            "About",
-            "Quit",
-        ]
+        self.entries = entries
         self._current_selection = 0
         self.active = active
-        self.selected = None
+        self.chosen = None
 
     def reset_selection(self):
         self._current_selection = 0
-        self.selected = None
+        self.chosen = None
 
     def connect_gamepad(self, gamepad):
         self.gamepad = gamepad
@@ -57,7 +62,7 @@ class Menu:
         self.font_loader.set_font(self.title_font)
         # font_size = self.font_loader.get_font_size(self.font)
         font_pos = (8, 8)
-        menu_string = b"Starpad Main Menu"
+        menu_string = self.title.encode()
         sdlgfx.stringRGBA(
             surface_renderer.sdlrenderer,
             font_pos[0],
@@ -91,16 +96,20 @@ class Menu:
     def select_previous(self):
         self._current_selection = (self._current_selection - 1) % len(self.entries)
 
+    @property
+    def selected(self):
+        return self.entries[self._current_selection]
+
     def move_up(self):
         self.select_previous()
 
     def move_down(self):
         self.select_next()
 
-    def select(self):
-        self.selected = self.entries[self._current_selection]
+    def choose(self):
+        self.chosen = self.entries[self._current_selection]
         self.active = False
-        log.debug(f"Selected: {self.selected}")
+        log.debug(f"Chosen menu item: {self.chosen}")
 
     def cancel(self):
         self.active = False
