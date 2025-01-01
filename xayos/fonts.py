@@ -10,6 +10,7 @@ FONT_PATH = HERE / "fonts"
 
 log = logging.getLogger(__name__)
 
+
 class FontLoader:
     def __init__(self):
         # {font_name: (width, height, font_data)}

@@ -38,7 +38,6 @@ class GamepadViewer:
         self.scale = scale
         # Load png image
         self.img_surface = sdl2.ext.load_img(str(RESOURCES_PATH / "ds4.png"))
-        self.img_texture = None
         # Create a surface 45x30
         self.drawing_surface = sdl2.SDL_CreateRGBSurface(
             0, 45, 30, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
@@ -68,16 +67,13 @@ class GamepadViewer:
         self.left_trigger_pos = [
             # (11, 3),
             (12, 3),
-            (13, 3)
+            (13, 3),
         ]
         self.right_trigger_pos = [
             (31, 3),
             (32, 3),
             # (33, 3)
         ]
-
-    def create_texture(self, renderer):
-        self.img_texture = sdl2.ext.Texture(renderer, self.img_surface)
 
     def draw_button_states(self, surface_renderer):
         buttons_pressed = self.gamepad_state.buttons_pressed()

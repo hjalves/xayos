@@ -1,5 +1,8 @@
-pysdl2==0.9.16
+pysdl2==0.9.17
 pysdl2-dll==2.30.10
 PyOpenGL==3.1.7
 PyOpenGL-accelerate==3.1.7
+PyGLM==2.7.1
 bdfparser==2.2.0
+numpy==1.26.4  # Cannot be updated to 2.0.0 due to PyOpenGL-accelerate
+

@@ -1,15 +1,18 @@
+import argparse
 import logging
 import time
 from pathlib import Path
 
 import sdl2
 import sdl2.ext
+from sdl2.ext import raise_sdl_err
+from OpenGL import GL as gl
 
 from . import colors
 from .fonts import FontLoader
-from .gamepad import GamepadHandler
+from .gamepad import GamepadHandler, BUTTON_START
 from .gamepad_viewer import GamepadViewer
-from .input import TextInputHandler
+from .input import MenuController, TextController
 from .logger import setup_logging
 from .menu import Menu
 from .starfield import StarField
@@ -19,80 +22,54 @@ log = logging.getLogger(__name__)
 
 HERE = Path(__file__).parent
 RESOURCES_PATH = HERE / "resources"
+OUTDIR = HERE / "out"
 
 
 class XayosLunarShell:
     window_title = "Xayos Lunar Shell [POC]"
     renderer_backend = -1  # Default backend
-    # renderer_flags = 0
-    renderer_flags = sdl2.SDL_RENDERER_SOFTWARE
-    # renderer_flags = sdl2.SDL_RENDERER_PRESENTVSYNC
+    renderer_flags = 0
+    window_flags = sdl2.SDL_WINDOW_OPENGL
     logical_size = (960, 540)
     window_size = logical_size
 
-    def __init__(self):
+    def __init__(
+        self,
+        renderer_backend=None,
+        software_renderer=False,
+        vsync=False,
+        fps_target=None,
+    ):
         # SDL2 objects
         self.window = None
         self.context = None
         # Application configuration
-        self.fps_target = 30
+        self.fps_target = fps_target
         # Application state
         self.running = True
         self.fps_avg = 0
-        self.in_menu = False
+        self.renderer_backend = renderer_backend or self.renderer_backend
+        self.renderer_flags |= sdl2.SDL_RENDERER_SOFTWARE if software_renderer else 0
+        self.renderer_flags |= sdl2.SDL_RENDERER_PRESENTVSYNC if vsync else 0
         # Application objects
-        self.starfield = None
-        self.font_loader = None
-        self.menu = None
-        self.gamepad = None
-        self.gamepad_viewer = None
-        self.input_handler = None
-        self.text_editor = None
-        self.date_time = None
-        self.fps_counter = None
-
-    def init_sdl(self):
-        sdl2.ext.init(joystick=True, controller=True)
-        self.window = sdl2.ext.Window(self.window_title, size=self.window_size)
-        self.context = sdl2.ext.Renderer(
-            self.window, backend=self.renderer_backend, flags=self.renderer_flags
-        )
-        self.renderer_info(self.context.sdlrenderer)
-        sdl2.SDL_RenderSetLogicalSize(self.context.sdlrenderer, *self.logical_size)
-        self.window.show()
-
-    def main(self):
-        setup_logging(verbose=True)
-        self.init_sdl()
-
-        self.setup_gamepads()
-
         width, height = self.logical_size
-        starfield = StarField(width, height)
-
-        self.gamepad = GamepadHandler()
-        self.gamepad_viewer = GamepadViewer(self.gamepad)
-        self.gamepad_viewer.create_texture(self.context)
-
         self.font_loader = FontLoader()
+        self.gamepad = GamepadHandler(on_input=self.handle_input)
+        self.gamepad_watcher = GamepadViewer(self.gamepad)
+        self.starfield = StarField(width, height)
+        self.menu = Menu(self.font_loader, 200, 200, active=False)
+        self.menu_controller = MenuController(self.menu)
         self.text_editor = TextEditor(
             self.font_loader,
             text="Hello, Galaxy!\n",
             font_name="10x20",
             x=18,
             y=18,
-            fg=colors.WHITE,
+            fg=colors.LIGHT_GREY_2,
         )
-        self.input_handler = TextInputHandler()
-        self.input_handler.set_active_widget(self.text_editor)
-        self.input_handler.connect_gamepad(self.gamepad)
-        # text_input.disconnect_gamepad()
-
-        menu = Menu(self.font_loader, 200, 200)
-        # menu.connect_gamepad(gamepad)
-        menu.active = False
-
-        date_time = TextLine(
+        self.open_file()
+        self.text_controller = TextController(self.gamepad, self.text_editor)
+        self.date_time = TextLine(
             self.font_loader,
             x=width - len("YYYY-mm-dd HH:MM:SS") * 9 - 10,
             y=height - 18 - 10,
@@ -100,7 +77,7 @@ class XayosLunarShell:
             font_name="9x18B",
             fg=colors.GREY,
         )
-        fps_counter = TextLine(
+        self.fps_counter = TextLine(
             self.font_loader,
             x=10,
             y=height - 18 - 10,
@@ -109,8 +86,53 @@ class XayosLunarShell:
             fg=colors.DARK_GREY_3,
         )
 
+    def init_sdl(self):
+        sdl2.ext.init(joystick=True, controller=True)
+        self.window = sdl2.ext.Window(
+            self.window_title, size=self.window_size, flags=self.window_flags
+        )
+        self.context = sdl2.ext.Renderer(
+            self.window, backend=self.renderer_backend, flags=self.renderer_flags
+        )
+        self.renderer_info(self.context.sdlrenderer)
+        if self.fps_target:
+            log.info(f"Frame rate limited to {self.fps_target} FPS")
+        sdl2.SDL_RenderSetLogicalSize(self.context.sdlrenderer, *self.logical_size)
+        self.window.show()
+
+    def init_opengl(self):
+        gl_attributes = {
+            # Use OpenGL 3.3 (core context)
+            sdl2.SDL_GL_CONTEXT_MAJOR_VERSION: 3,
+            sdl2.SDL_GL_CONTEXT_MINOR_VERSION: 3,
+            sdl2.SDL_GL_CONTEXT_PROFILE_MASK: sdl2.SDL_GL_CONTEXT_PROFILE_CORE,
+            # Double buffering and depth buffer size
+            sdl2.SDL_GL_DOUBLEBUFFER: 1,
+            sdl2.SDL_GL_DEPTH_SIZE: 24,
+        }
+        for attr, value in gl_attributes.items():
+            if sdl2.SDL_GL_SetAttribute(attr, value) != 0:
+                raise_sdl_err("setting OpenGL attributes")
+        gl_context = sdl2.SDL_GL_CreateContext(self.window.window)
+        if not gl_context:
+            raise_sdl_err("creating OpenGL context")
+        log.info("OpenGL version: %s", gl.glGetString(gl.GL_VERSION).decode())
+        log.info("OpenGL renderer: %s", gl.glGetString(gl.GL_RENDERER).decode())
+        # Number of vertex attributes supported
+        log.debug("GL_MAX_VERTEX_ATTRIBS: %s", gl.glGetInteger(gl.GL_MAX_VERTEX_ATTRIBS))
+        return gl_context
+
+    def main(self):
+        setup_logging(verbose=True)
+        self.init_sdl()
+        # self.gl_context = self.init_opengl()
+
+        self.setup_gamepads()
+
         # Wait until the user closes the window
         ticks = sdl2.SDL_GetTicks()
+
+        #
 
         while self.running:
             # Calculate the elapsed time since the last frame
@@ -121,40 +143,53 @@ class XayosLunarShell:
             # Handle events
             events = sdl2.ext.get_events()
             self.handle_events(events)
-
-            # Handle menu
-            if menu.active and menu.selected:
-                log.info(f"Selected menu item: {menu.selected}")
-                if menu.selected == "Quit":
-                    self.running = False
-                menu.selected = None
+            self.handle_menu()
 
             # Update the date and time
-            date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
-            fps_counter.set_text(f"FPS: {self.fps_avg:.0f}".encode())
+            self.date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
+            self.fps_counter.set_text(f"FPS: {self.fps_avg:.0f}".encode())
 
-            # Update the text editor
-            self.input_handler.update(elapsed_ms)
+            if self.text_controller:
+                self.text_controller.update(elapsed_ms)
 
             # Render the starfield
             self.context.clear(color=colors.BLACK)
-            starfield.draw(self.context.sdlrenderer)
+            self.starfield.draw(self.context.sdlrenderer)
 
-            self.gamepad_viewer.render(self.context)
+            self.gamepad_watcher.render(self.context)
 
             self.text_editor.render_cursor(self.context.sdlrenderer)
             self.text_editor.render(self.context.sdlrenderer)
 
-            if menu.active:
-                menu.render(self.context)
+            if self.menu.active:
+                self.menu.render(self.context)
 
-            date_time.render(self.context.sdlrenderer)
-            fps_counter.render(self.context.sdlrenderer)
+            self.date_time.render(self.context.sdlrenderer)
+            self.fps_counter.render(self.context.sdlrenderer)
 
             # Update the window
             self.context.present()
             # Limit the frame rate
             self.limit_frame_rate(ticks)
+
+    def open_file(self):
+        # Get the latest file from the out directory
+        files = sorted(OUTDIR.glob("starpad-*.txt"))
+        if files:
+            filename = files[-1]
+            with open(filename, "rt") as f:
+                text = f.read()
+                self.text_editor.set_text(text)
+                log.info(f"Opened text file: {filename}")
+
+    def save_file(self):
+        template = "starpad-{timestamp}.txt"
+        OUTDIR.mkdir(parents=True, exist_ok=True)
+        filename = OUTDIR / template.format(timestamp=time.strftime("%Y%m%d-%H%M%S"))
+        text = self.text_editor.get_text()
+        with open(filename, "wt") as f:
+            f.write(text)
+        log.info(f"Saved text file: {filename}")
 
     def handle_events(self, events):
         if sdl2.ext.quit_requested(events):
@@ -164,18 +199,41 @@ class XayosLunarShell:
             # Handle all gamepad events
             if event.type == sdl2.SDL_KEYDOWN:
                 # Check for the ESC key to exit the program
-                if event.key.keysym.sym == sdl2.SDLK_ESCAPE:
-                    self.running = False
+                # if event.key.keysym.sym == sdl2.SDLK_ESCAPE:
+                #     self.running = False
                 # Check for the F11 key to toggle fullscreen mode
-                elif event.key.keysym.sym == sdl2.SDLK_F11:
+                if event.key.keysym.sym == sdl2.SDLK_F11:
                     self.toggle_fullscreen()
-            if (
-                sdl2.SDL_CONTROLLERAXISMOTION
-                <= event.type
-                <= sdl2.SDL_CONTROLLERSENSORUPDATE
-                or event.type in (sdl2.SDL_KEYDOWN, sdl2.SDL_KEYUP)
-            ):
-                self.gamepad.handle_event(event)
+            # Handle all gamepad events
+            self.gamepad.handle_event(event)
+
+    def handle_input(self, button, state):
+        if button == BUTTON_START and state:
+            self.toggle_menu()
+        if self.menu.active:
+            self.menu_controller.handle_input(button, state)
+        else:
+            self.text_controller.handle_input(button, state)
+
+    def handle_menu(self):
+        if self.menu.selected:
+            log.info(f"Selected menu item: {self.menu.selected}")
+            if self.menu.selected == "New File":
+                self.text_editor.clear()
+            elif self.menu.selected == "Open...":
+                self.open_file()
+            elif self.menu.selected in ("Save", "Save As..."):
+                self.save_file()
+            elif self.menu.selected == "Quit":
+                self.running = False
+            else:
+                log.warning(f"Unknown menu item: {self.menu.selected}")
+            self.menu.selected = None
+
+    def toggle_menu(self):
+        self.menu.active = not self.menu.active
+        # if self.menu.active:
+        #    self.menu.reset_selection()
 
     def renderer_info(self, sdlrenderer):
         info = sdl2.render.SDL_RendererInfo()
@@ -228,6 +286,35 @@ def is_alpha_numeric(key):
     )
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Xayos Lunar Shell")
+    parser.add_argument(
+        "--backend",
+        type=str,
+        help="Use the specified renderer backend (e.g. 'opengl', 'software')",
+    )
+    parser.add_argument(
+        "--software",
+        action="store_true",
+        help="Use a software renderer instead of a hardware renderer",
+    )
+    parser.add_argument(
+        "--vsync", action="store_true", help="Enable vertical synchronization"
+    )
+    parser.add_argument(
+        "--fps",
+        type=int,
+        help="Limit the frame rate to the specified frames per second",
+    )
+    return parser.parse_args()
+
+
 def main():
-    app = XayosLunarShell()
+    args = parse_args()
+    app = XayosLunarShell(
+        renderer_backend=args.backend,
+        software_renderer=args.software,
+        vsync=args.vsync,
+        fps_target=args.fps,
+    )
     app.main()

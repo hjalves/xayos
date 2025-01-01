@@ -40,8 +40,6 @@ class TextLine:
         )
 
 
-
-
 class TextEditor:
     def __init__(
         self,
@@ -51,7 +49,7 @@ class TextEditor:
         font_name="10x20",
         text="<Insert text here>",
         fg=colors.WHITE,
-        line_spacing=0
+        line_spacing=0,
     ):
         self.font_loader = font_loader
         self.font = font_name
@@ -67,6 +65,9 @@ class TextEditor:
         self.cursor_color = colors.PINK
         self.cursor_char_color = colors.PINK
         self.update_cursor_position()
+
+    def get_text(self):
+        return self.text
 
     def set_text(self, text):
         self.text = text
@@ -86,6 +87,10 @@ class TextEditor:
         # TODO: for now delete the line
         lines = self.text.split("\n")
         self.text = "\n".join(lines[:-1])
+        self.update_cursor_position()
+
+    def clear(self):
+        self.text = ""
         self.update_cursor_position()
 
     def update_cursor_position(self):
@@ -110,16 +115,12 @@ class TextEditor:
             cursor_y + font_size[1] - 2,
             cursor_x + font_size[0],
             cursor_y + font_size[1],
-            *self.cursor_color
+            *self.cursor_color,
         )
         if self.cursor_char:
             self.font_loader.set_font(self.font)
             sdlgfx.stringRGBA(
-                sdlrenderer,
-                cursor_x,
-                cursor_y,
-                self.cursor_char,
-                *self.cursor_char_color
+                sdlrenderer, cursor_x, cursor_y, self.cursor_char, *self.cursor_char_color
             )
 
     def render(self, sdlrenderer):
@@ -144,4 +145,3 @@ class TextEditor:
                 self.fg[2],
                 self.fg[3],
             )
-

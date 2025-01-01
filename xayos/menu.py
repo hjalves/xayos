@@ -9,11 +9,12 @@ log = logging.getLogger(__name__)
 
 
 class Menu:
-    def __init__(self, font_loader, width, height):
+    def __init__(self, font_loader, width, height, active=False):
         self.gamepad = None
         self.font_loader = font_loader
         self.title_font = "9x18B"
         self.font = "10x20"
+        self.background = colors.DARK_GREY_1[0:3] + (0xDD,)
         self.width = width
         self.height = height
         self.surface = sdl2.SDL_CreateRGBSurface(
@@ -28,12 +29,11 @@ class Menu:
             "Quit",
         ]
         self._current_selection = 0
-        self.active = True
+        self.active = active
         self.selected = None
 
-    def reset(self):
+    def reset_selection(self):
         self._current_selection = 0
-        self.active = False
         self.selected = None
 
     def connect_gamepad(self, gamepad):
@@ -45,7 +45,7 @@ class Menu:
 
     def render(self, renderer):
         surface_renderer = sdl2.ext.Renderer(self.surface)
-        surface_renderer.clear((127, 127, 255, 64))
+        surface_renderer.clear(self.background)
         # draw a line in the edges of the surface
         border = (0, 0, self.width, self.height)
         title_border = (0, 32, self.width, 32)
@@ -91,17 +91,19 @@ class Menu:
     def select_previous(self):
         self._current_selection = (self._current_selection - 1) % len(self.entries)
 
-    def on_button_press(self, button):
-        if button == BUTTON_DPAD_DOWN:
-            self.select_next()
-        elif button == BUTTON_DPAD_UP:
-            self.select_previous()
-        elif button == BUTTON_A:
-            log.info("Selected: %s", self.entries[self._current_selection])
-            self.selected = self.entries[self._current_selection]
-        elif button == BUTTON_B:
-            log.info("Cancel")
-            self.active = False
+    def move_up(self):
+        self.select_previous()
+
+    def move_down(self):
+        self.select_next()
+
+    def select(self):
+        self.selected = self.entries[self._current_selection]
+        self.active = False
+        log.debug(f"Selected: {self.selected}")
+
+    def cancel(self):
+        self.active = False
 
     def on_button_release(self, button):
         pass

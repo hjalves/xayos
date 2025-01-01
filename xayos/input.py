@@ -19,11 +19,33 @@ from xayos.gamepad import (
 
 log = logging.getLogger(__name__)
 
-class SimpleInputHandler:
-    pass
+
+class InputHandler:
+    def __init__(self, gamepad):
+        pass
 
 
-class TextInputHandler:
+class MenuController:
+    def __init__(self, widget):
+        self.widget = widget
+
+    def handle_input(self, button, state):
+        if state:
+            self.on_button_press(button)
+
+    def on_button_press(self, button):
+        log.debug(f"SimpleInputHandler: Button pressed: {button}")
+        if button == BUTTON_A:
+            self.widget.select()
+        elif button == BUTTON_B:
+            self.widget.cancel()
+        elif button == BUTTON_DPAD_UP:
+            self.widget.move_up()
+        elif button == BUTTON_DPAD_DOWN:
+            self.widget.move_down()
+
+
+class TextController:
     TRIGGER_THRESHOLD = 20000
 
     S1_KEYS = ("a", "b", "c")
@@ -44,29 +66,23 @@ class TextInputHandler:
     L7_KEYS = (")", "]", "}", ">", '"', "'")
     L8_KEYS = ("-", "=", "+", "*", "/", "^", "~", "#", "%", "@")
 
-    def __init__(self, gamepad=None):
-        self.gamepad = None
-        self.active_widget = None
+    def __init__(self, gamepad, widget):
+        self.gamepad = gamepad
+        # self.gamepad.set_callbacks(
+        #     on_button_press=self.on_button_press,
+        #     on_button_release=self.on_button_release,
+        # )
+        self.active_widget = widget
         self.current_char = None
         self.cycled_elapsed = 0
         self.uppercase = False
         self.caps_lock = False
-        if gamepad:
-            self.connect_gamepad(gamepad)
 
-    def connect_gamepad(self, gamepad):
-        self.gamepad = gamepad
-        self.gamepad.set_callbacks(
-            on_button_press=self.on_button_press,
-            on_button_release=self.on_button_release,
-        )
-
-    def disconnect_gamepad(self):
-        self.gamepad.clear_event_callbacks()
-        self.gamepad = None
-
-    def set_active_widget(self, text_editor):
-        self.active_widget = text_editor
+    def handle_input(self, button, state):
+        if state:
+            self.on_button_press(button)
+        else:
+            self.on_button_release(button)
 
     def on_button_press(self, button):
         if button in (BUTTON_TRIGGERRIGHT, BUTTON_TRIGGERLEFT):

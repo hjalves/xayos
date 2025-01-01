@@ -1,4 +1,5 @@
 """OpenGL rendering simulation"""
+
 import sys
 import ctypes
 
@@ -11,10 +12,14 @@ def run():
         print(sdl2.SDL_GetError())
         return -1
 
-    window = sdl2.SDL_CreateWindow(b"OpenGL demo",
-                                   sdl2.SDL_WINDOWPOS_UNDEFINED,
-                                   sdl2.SDL_WINDOWPOS_UNDEFINED, 800, 600,
-                                   sdl2.SDL_WINDOW_OPENGL)
+    window = sdl2.SDL_CreateWindow(
+        b"OpenGL demo",
+        sdl2.SDL_WINDOWPOS_UNDEFINED,
+        sdl2.SDL_WINDOWPOS_UNDEFINED,
+        800,
+        600,
+        sdl2.SDL_WINDOW_OPENGL,
+    )
     if not window:
         print(sdl2.SDL_GetError())
         return -1

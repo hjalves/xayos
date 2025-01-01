@@ -1,4 +1,5 @@
 """2D drawing examples utilising the SDL2_gfx functions."""
+
 import logging
 import sys
 import ctypes
@@ -13,6 +14,7 @@ from xayos.logger import setup_logging
 
 log = logging.getLogger(__name__)
 
+
 # Draws random lines using the passed rendering context
 def draw_lines(context, width, height):
     # Reset the visible area with a black color.
@@ -23,12 +25,10 @@ def draw_lines(context, width, height):
     lw = 5
     x0, x1 = whalf, whalf
     y0, y1 = 0, height
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw,
-                               0xFFFFFFFF)
+    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw, 0xFFFFFFFF)
     x0, x1 = 0, width
     y0, y1 = hhalf, hhalf
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw,
-                               0xFFFFFFFF)
+    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw, 0xFFFFFFFF)
     for x in range(15):
         # In the first quadrant, draw normal lines
         color = randint(0, 0xFFFFFFFF)
@@ -59,10 +59,18 @@ def draw_circles(context, width, height):
     # Split the visible area
     wthird = width // 3 - 1
     lw = 3
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, wthird, 0, wthird, height,
-                               lw, 0xFFFFFFFF)
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, (2 * wthird + lw), 0,
-                               (2 * wthird + lw), height, lw, 0xFFFFFFFF)
+    sdl2.sdlgfx.thickLineColor(
+        context.sdlrenderer, wthird, 0, wthird, height, lw, 0xFFFFFFFF
+    )
+    sdl2.sdlgfx.thickLineColor(
+        context.sdlrenderer,
+        (2 * wthird + lw),
+        0,
+        (2 * wthird + lw),
+        height,
+        lw,
+        0xFFFFFFFF,
+    )
     for x in range(15):
         # In the first part, draw circles
         color = randint(0, 0xFFFFFFFF)
@@ -73,14 +81,14 @@ def draw_circles(context, width, height):
         color = randint(0, 0xFFFFFFFF)
         x, y = randint(0, wthird), randint(0, height)
         r = randint(1, max(min(x, wthird - x), 2))
-        sdl2.sdlgfx.aacircleColor(context.sdlrenderer, x + wthird + lw, y, r,
-                                  color)
+        sdl2.sdlgfx.aacircleColor(context.sdlrenderer, x + wthird + lw, y, r, color)
         # In the third part, draw filled circles
         color = randint(0, 0xFFFFFFFF)
         x, y = randint(0, wthird), randint(0, height)
         r = randint(1, max(min(x, wthird - x), 2))
-        sdl2.sdlgfx.filledCircleColor(context.sdlrenderer, x + 2 * (wthird + lw),
-                                      y, r, color)
+        sdl2.sdlgfx.filledCircleColor(
+            context.sdlrenderer, x + 2 * (wthird + lw), y, r, color
+        )
 
 
 # Draws random ellipsis using the passed rendering context
@@ -91,10 +99,18 @@ def draw_ellipsis(context, width, height):
     wthird = width // 3 - 1
     eheight = height // 4
     lw = 3
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, wthird, 0, wthird, height,
-                               lw, 0xFFFFFFFF)
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, (2 * wthird + lw), 0,
-                               (2 * wthird + lw), height, lw, 0xFFFFFFFF)
+    sdl2.sdlgfx.thickLineColor(
+        context.sdlrenderer, wthird, 0, wthird, height, lw, 0xFFFFFFFF
+    )
+    sdl2.sdlgfx.thickLineColor(
+        context.sdlrenderer,
+        (2 * wthird + lw),
+        0,
+        (2 * wthird + lw),
+        height,
+        lw,
+        0xFFFFFFFF,
+    )
     for x in range(15):
         # In the first part, draw ellipsis
         color = randint(0, 0xFFFFFFFF)
@@ -105,15 +121,14 @@ def draw_ellipsis(context, width, height):
         color = randint(0, 0xFFFFFFFF)
         x, y = randint(0, wthird), randint(0, height)
         rx, ry = randint(1, max(min(x, wthird - x), 2)), randint(0, eheight)
-        sdl2.sdlgfx.aaellipseColor(context.sdlrenderer, x + wthird + lw, y,
-                                   rx, ry, color)
+        sdl2.sdlgfx.aaellipseColor(context.sdlrenderer, x + wthird + lw, y, rx, ry, color)
         # In the third part, draw filled ellipsis
         color = randint(0, 0xFFFFFFFF)
         x, y = randint(0, wthird), randint(0, height)
         rx, ry = randint(1, max(min(x, wthird - x), 2)), randint(0, eheight)
-        sdl2.sdlgfx.filledEllipseColor(context.sdlrenderer,
-                                       x + 2 * (wthird + lw), y, rx, ry,
-                                       color)
+        sdl2.sdlgfx.filledEllipseColor(
+            context.sdlrenderer, x + 2 * (wthird + lw), y, rx, ry, color
+        )
 
 
 # Draws random rectangles using the passed rendering context
@@ -126,12 +141,10 @@ def draw_rects(context, width, height):
     lw = 5
     x0, x1 = whalf, whalf
     y0, y1 = 0, height
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw,
-                               0xFFFFFFFF)
+    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw, 0xFFFFFFFF)
     x0, x1 = 0, width
     y0, y1 = hhalf, hhalf
-    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw,
-                               0xFFFFFFFF)
+    sdl2.sdlgfx.thickLineColor(context.sdlrenderer, x0, y0, x1, y1, lw, 0xFFFFFFFF)
     for x in range(15):
         # In the first quadrant, draw normal rectangles
         color = randint(0, 0xFFFFFFFF)
@@ -143,8 +156,7 @@ def draw_rects(context, width, height):
         x0, x1 = randint(whalf + lw, width), randint(whalf + lw, width)
         y0, y1 = randint(0, hhalf), randint(0, hhalf)
         r = randint(0, max(x1 - x0, x0 - x1))
-        sdl2.sdlgfx.roundedRectangleColor(context.sdlrenderer, x0, y0, x1, y1, r,
-                                          color)
+        sdl2.sdlgfx.roundedRectangleColor(context.sdlrenderer, x0, y0, x1, y1, r, color)
         # In the third quadrant, draw horizontal lines
         color = randint(0, 0xFFFFFFFF)
         x0, x1 = randint(0, whalf), randint(0, whalf)
@@ -155,8 +167,7 @@ def draw_rects(context, width, height):
         x0, x1 = randint(whalf + lw, width), randint(whalf + lw, width)
         y0, y1 = randint(hhalf + lw, height), randint(hhalf + lw, height)
         r = randint(0, max(x1 - x0, x0 - x1))
-        sdl2.sdlgfx.roundedBoxColor(context.sdlrenderer, x0, y0, x1, y1, r,
-                                    color)
+        sdl2.sdlgfx.roundedBoxColor(context.sdlrenderer, x0, y0, x1, y1, r, color)
 
 
 def run():
@@ -188,7 +199,7 @@ def run():
     info = sdl2.render.SDL_RendererInfo()
     sdl2.SDL_GetRendererInfo(context.sdlrenderer, info)
 
-    print("\nUsing renderer: {0}".format(info.name.decode('utf-8')))
+    print("\nUsing renderer: {0}".format(info.name.decode("utf-8")))
 
     # A storage variable for the function we are currently on, so that we know
     # which function to execute next.
