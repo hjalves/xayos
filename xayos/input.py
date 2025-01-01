@@ -46,7 +46,7 @@ class MenuController:
 
 
 class TextController:
-    TRIGGER_THRESHOLD = 20000
+    KEY_NAMES = ["A", "X", "Y", "B", "v", "<", "^", ">"]
 
     S1_KEYS = ("a", "b", "c")
     S2_KEYS = ("d", "e", "f")
@@ -66,6 +66,28 @@ class TextController:
     L6_KEYS = (".", ",", "?", "!", "_", ":", ";", "|")
     L7_KEYS = (")", "]", "}", ">", '"', "'")
     L8_KEYS = ("-", "=", "+", "*", "/", "^", "~", "#", "%", "@")
+    L_CYCLES = (L1_KEYS, L2_KEYS, L3_KEYS, L4_KEYS, L5_KEYS, L6_KEYS, L7_KEYS, L8_KEYS)
+
+    S_MAPPING = {
+        BUTTON_A: S1_KEYS,
+        BUTTON_X: S2_KEYS,
+        BUTTON_Y: S3_KEYS,
+        BUTTON_B: S4_KEYS,
+        BUTTON_DPAD_DOWN: S5_KEYS,
+        BUTTON_DPAD_LEFT: S6_KEYS,
+        BUTTON_DPAD_UP: S7_KEYS,
+        BUTTON_DPAD_RIGHT: S8_KEYS,
+    }
+    L_MAPPING = {
+        BUTTON_A: L1_KEYS,
+        BUTTON_X: L2_KEYS,
+        BUTTON_Y: L3_KEYS,
+        BUTTON_B: L4_KEYS,
+        BUTTON_DPAD_LEFT: L5_KEYS,
+        BUTTON_DPAD_DOWN: L6_KEYS,
+        BUTTON_DPAD_RIGHT: L7_KEYS,
+        BUTTON_DPAD_UP: L8_KEYS,
+    }
 
     def __init__(self, gamepad, widget):
         self.gamepad = gamepad
@@ -79,19 +101,21 @@ class TextController:
         self.uppercase = False
         self.caps_lock = False
         self.status_cycle = ""
-        
-        self.help_line = ""
-        cycle_names = ["A", "X", "Y", "B", "v", "<", "^", ">"]
-        for i, groups in enumerate(self.S_CYCLES):
-            name = cycle_names[i]
-            self.help_line += f"[{name}]{''.join(groups)} "
-
+    
     def get_status_line(self):
+        # Help line
         if not self.status_cycle:
+            help_line = ""
+            cycles = self.S_CYCLES
+            if self.gamepad.is_pressed(BUTTON_TRIGGERRIGHT):
+                cycles = [("New Line",), ("Space",), ("Delete Line",), ("Backspace",)]
+            elif self.gamepad.is_pressed(BUTTON_TRIGGERLEFT):
+                cycles = self.L_CYCLES
+            for i, groups in enumerate(cycles):
+                help_line += f"[{self.KEY_NAMES[i]}]{''.join(groups)} "
             if self.uppercase:
-                return self.help_line.upper()
-            return self.help_line
-        
+                return help_line.upper()
+            return help_line
         if self.uppercase:
             return self.status_cycle.upper()
         return self.status_cycle
@@ -114,26 +138,6 @@ class TextController:
             return
         self.on_controller_button_up(button)
 
-    def on_key_down(self, key):
-        if key == sdl2.SDLK_F1:
-            self.cycle(chars=self.S1_KEYS)
-        elif key == sdl2.SDLK_F2:
-            self.cycle(chars=self.S2_KEYS)
-        elif key == sdl2.SDLK_F3:
-            self.cycle(chars=self.S3_KEYS)
-        elif key == sdl2.SDLK_F4:
-            self.cycle(chars=self.S4_KEYS)
-        elif key == sdl2.SDLK_F5:
-            self.cycle(chars=self.S5_KEYS)
-        elif key == sdl2.SDLK_F6:
-            self.cycle(chars=self.S6_KEYS)
-        elif key == sdl2.SDLK_F7:
-            self.cycle(chars=self.S7_KEYS)
-        elif key == sdl2.SDLK_F8:
-            self.cycle(chars=self.S8_KEYS)
-        else:
-            log.debug(f"Key pressed: {key}")
-
     def on_controller_button_down(self, button):
         if button == BUTTON_LEFTSHOULDER:
             self.toggle_uppercase()
@@ -141,53 +145,29 @@ class TextController:
             return
 
         if self.gamepad.is_pressed(BUTTON_TRIGGERRIGHT):
-            self.on_controller_button_down_r_modifier(button)
+            if button == BUTTON_A:
+                self.flush_char()
+                self.active_widget.put_char("\n")
+            elif button == BUTTON_X:
+                self.flush_char()
+                self.active_widget.put_char(" ")
+            elif button == BUTTON_B:
+                self.flush_char()
+                self.active_widget.backspace()
+            elif button == BUTTON_Y:
+                self.flush_char()
+                self.active_widget.delete()
+            else:
+                log.debug(f"Unhandled button: {button}")
             return
         if self.gamepad.is_pressed(BUTTON_TRIGGERLEFT):
-            self.on_controller_button_down_l_modifier(button)
+            mapping = self.L_MAPPING
+            if button in mapping:
+                self.cycle(chars=mapping[button])
+            else:
+                log.debug(f"Unhandled button: {button}")
             return
-        mapping = {
-            BUTTON_A: self.S1_KEYS,
-            BUTTON_X: self.S2_KEYS,
-            BUTTON_Y: self.S3_KEYS,
-            BUTTON_B: self.S4_KEYS,
-            BUTTON_DPAD_DOWN: self.S5_KEYS,
-            BUTTON_DPAD_LEFT: self.S6_KEYS,
-            BUTTON_DPAD_UP: self.S7_KEYS,
-            BUTTON_DPAD_RIGHT: self.S8_KEYS,
-        }
-        if button in mapping:
-            self.cycle(chars=mapping[button])
-        else:
-            log.debug(f"Unhandled button: {button}")
-
-    def on_controller_button_down_r_modifier(self, button):
-        if button == BUTTON_A:
-            self.flush_char()
-            self.active_widget.put_char("\n")
-        elif button == BUTTON_X:
-            self.flush_char()
-            self.active_widget.put_char(" ")
-        elif button == BUTTON_B:
-            self.flush_char()
-            self.active_widget.backspace()
-        elif button == BUTTON_Y:
-            self.flush_char()
-            self.active_widget.delete()
-        else:
-            log.debug(f"Unhandled button: {button}")
-
-    def on_controller_button_down_l_modifier(self, button):
-        mapping = {
-            BUTTON_A: self.L1_KEYS,
-            BUTTON_X: self.L2_KEYS,
-            BUTTON_Y: self.L3_KEYS,
-            BUTTON_B: self.L4_KEYS,
-            BUTTON_DPAD_LEFT: self.L5_KEYS,
-            BUTTON_DPAD_DOWN: self.L6_KEYS,
-            BUTTON_DPAD_RIGHT: self.L7_KEYS,
-            BUTTON_DPAD_UP: self.L8_KEYS,
-        }
+        mapping = self.S_MAPPING
         if button in mapping:
             self.cycle(chars=mapping[button])
         else:

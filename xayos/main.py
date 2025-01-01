@@ -10,7 +10,7 @@ from OpenGL import GL as gl
 
 from . import colors
 from .fonts import FontLoader
-from .gamepad import GamepadHandler, BUTTON_START
+from .gamepad import GamepadHandler, BUTTON_START, BUTTON_LEFTSTICK, BUTTON_RIGHTSTICK
 from .gamepad_viewer import GamepadViewer
 from .input import MenuController, TextController
 from .logger import setup_logging
@@ -155,7 +155,10 @@ class XayosLunarShell:
             # Update the date and time
             self.date_time.set_text(time.strftime("%Y-%m-%d %H:%M:%S").encode())
             self.fps_counter.set_text(f"{self.fps_avg:3.0f}".encode())
-            self.status_line.set_text(self.text_controller.get_status_line().encode())
+            if not self.menu.active:
+                self.status_line.set_text(self.text_controller.get_status_line().encode())
+            else:
+                self.status_line.set_text(b"[Menu]")
 
             if self.text_controller:
                 self.text_controller.update(elapsed_ms)
@@ -217,6 +220,15 @@ class XayosLunarShell:
             self.gamepad.handle_event(event)
 
     def handle_input(self, button, state):
+        if (
+            button == BUTTON_LEFTSTICK
+            and self.gamepad.is_pressed(BUTTON_RIGHTSTICK)
+            and state
+            or button == BUTTON_RIGHTSTICK
+            and self.gamepad.is_pressed(BUTTON_LEFTSTICK)
+            and state
+        ):
+            self.toggle_fullscreen()
         if button == BUTTON_START and state:
             self.toggle_menu()
         if self.menu.active:
