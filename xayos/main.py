@@ -15,6 +15,13 @@ from .gamepad_viewer import GamepadViewer
 from .input import MenuController, TextController
 from .logger import setup_logging
 from .menu import Menu
+from .psudo3d import (
+    generate_sphere,
+    render_wireframe,
+    rotate_model,
+    render_point_cloud,
+    load_obj,
+)
 from .starfield import StarField
 from .starpad import StarpadApp
 from .text import TextEditor, TextLine
@@ -46,14 +53,17 @@ class XayosRootApplication:
     def __init__(self, font_loader, gamepad, width, height, load_application=None):
         self.running = True
         self.font_loader = font_loader
+        self.gamepad = gamepad
+        self.width = width
+        self.height = height
         self.menu = Menu(
             font_loader,
             width // 3,
-            2 * height // 3,
+            height // 3,
             entries=self.MENU_ENTRIES,
             active=True,
             title="Lunar Shell",
-            background=colors.TRANSPARENT,
+            background=(0, 0, 0, 128),
         )
         self.status_line = TextLine(
             self.font_loader,
@@ -63,8 +73,11 @@ class XayosRootApplication:
             font_name="9x18B",
             fg=colors.GREY,
         )
+        # self.model_v, self.model_e = load_obj("teapot.obj")
+        self.model_v, self.model_e = generate_sphere(1.0, 24, 24)
         self.menu_controller = MenuController(self.menu)
         self.load_application = load_application
+        self.rotate_speed = [0.01, 0.04, 0.03]
 
     def update(self, elapsed_ms):
         help_text = self.MENU_HELP.get(self.menu.selected)
@@ -75,8 +88,32 @@ class XayosRootApplication:
             else:
                 self.load_application(self.menu.chosen)
                 self.menu.chosen = None
+        x_rot, y_rot, z_rot = self.rotate_speed
+        x_angle_delta = x_rot * elapsed_ms
+        y_angle_delta = y_rot * elapsed_ms
+        z_angle_delta = z_rot * elapsed_ms
+        self.model_v = rotate_model(
+            self.model_v, x_angle_delta, y_angle_delta, z_angle_delta
+        )
 
     def render(self, renderer):
+        # render_wireframe(
+        #     renderer,
+        #     self.sphere_v,
+        #     self.sphere_e,
+        #     self.width // 3,
+        #     self.height,
+        #     scale=80,
+        #     color=colors.WHITE,
+        # )
+        render_point_cloud(
+            renderer,
+            self.model_v,
+            self.width,
+            self.height // 3,
+            scale=50,
+            color=colors.LIGHT_GREY_1,
+        )
         self.menu.render(renderer)
         self.status_line.render(renderer.sdlrenderer)
 
@@ -243,6 +280,24 @@ class XayosLunarShell:
                 # Check for the F11 key to toggle fullscreen mode
                 if event.key.keysym.sym == sdl2.SDLK_F11:
                     self.toggle_fullscreen()
+                if event.key.keysym.sym == sdl2.SDLK_q:
+                    self.application.rotate_speed[0] -= 0.0001
+                    print(self.application.rotate_speed)
+                if event.key.keysym.sym == sdl2.SDLK_w:
+                    self.application.rotate_speed[1] -= 0.0001
+                    print(self.application.rotate_speed)
+                if event.key.keysym.sym == sdl2.SDLK_e:
+                    self.application.rotate_speed[2] -= 0.0001
+                    print(self.application.rotate_speed)
+                if event.key.keysym.sym == sdl2.SDLK_a:
+                    self.application.rotate_speed[0] += 0.0001
+                    print(self.application.rotate_speed)
+                if event.key.keysym.sym == sdl2.SDLK_s:
+                    self.application.rotate_speed[1] += 0.0001
+                    print(self.application.rotate_speed)
+                if event.key.keysym.sym == sdl2.SDLK_d:
+                    self.application.rotate_speed[2] += 0.0001
+                    print(self.application.rotate_speed)
             # Handle all gamepad events and some keyboard events
             self.gamepad.handle_event(event)
 
