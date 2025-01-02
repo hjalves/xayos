@@ -25,6 +25,7 @@ from .psudo3d import (
 from .starfield import StarField
 from .starpad import StarpadApp
 from .text import TextEditor, TextLine
+from .voyager import Voyager
 
 log = logging.getLogger(__name__)
 
@@ -259,6 +260,8 @@ class XayosLunarShell:
     def load_application(self, app_name):
         if app_name == "Starpad":
             self.application = StarpadApp(self.font_loader, self.gamepad, 960, 540)
+        elif app_name == "Voyager":
+            self.application = Voyager(self.font_loader, self.gamepad, 960, 540)
         else:
             log.error(f"Unknown application: {app_name}")
 

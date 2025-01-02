@@ -1,6 +1,7 @@
 import logging
 import json
 import sys
+import warnings
 
 
 class JsonFormatter(logging.Formatter):
@@ -57,6 +58,7 @@ class PrettyFormatter(logging.Formatter):
 def setup_logging(verbose: bool = False):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+    logging.captureWarnings(True)
 
     console_handler = logging.StreamHandler(stream=sys.stdout)
     console_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -64,7 +66,7 @@ def setup_logging(verbose: bool = False):
         PrettyFormatter(
             fmt=(
                 "%(color)s%(asctime)s.%(msecs)03d %(bold)s[%(levelname)1.1s] "
-                "%(normal)s%(name)s%(reset)s: %(message)s "
+                "%(normal)s(%(threadName)s) %(name)s%(reset)s: %(message)s "
                 "%(dark_grey)s(%(filename)s:%(lineno)d)%(reset)s"
             ),
             datefmt="%H:%M:%S",
