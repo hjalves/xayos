@@ -43,6 +43,16 @@ class MenuController:
         elif button == BUTTON_DPAD_DOWN:
             self.widget.move_down()
 
+    def on_key_press(self, key):
+        if key == sdl2.SDLK_RETURN:
+            self.widget.choose()
+        elif key == sdl2.SDLK_ESCAPE:
+            self.widget.cancel()
+        elif key == sdl2.SDLK_UP:
+            self.widget.move_up()
+        elif key == sdl2.SDLK_DOWN:
+            self.widget.move_down()
+
 
 class TextController:
     KEY_NAMES = ["A", "X", "Y", "B", "v", "<", "^", ">"]

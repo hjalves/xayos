@@ -38,7 +38,7 @@ log = logging.getLogger(__name__)
 
 class GamepadHandler:
 
-    def __init__(self, on_button_press=None, on_button_release=None, on_input=None):
+    def __init__(self, on_input=None):
         # self.controller = None
         # self.controller_id = None
         self.trigger_threshold = 32767 // 2
@@ -87,25 +87,23 @@ class GamepadHandler:
             sdl2.SDLK_F9: BUTTON_START,
             sdl2.SDLK_F10: BUTTON_BACK,
             sdl2.SDLK_F12: BUTTON_GUIDE,
+            sdl2.SDLK_UP: BUTTON_DPAD_UP,
+            sdl2.SDLK_DOWN: BUTTON_DPAD_DOWN,
+            sdl2.SDLK_LEFT: BUTTON_DPAD_LEFT,
+            sdl2.SDLK_RIGHT: BUTTON_DPAD_RIGHT,
+            sdl2.SDLK_RETURN: BUTTON_START,
+            sdl2.SDLK_ESCAPE: BUTTON_BACK,
+            sdl2.SDLK_SPACE: BUTTON_A,
+            sdl2.SDLK_BACKSPACE: BUTTON_B,
         }
-        self.on_button_press = on_button_press
-        self.on_button_release = on_button_release
         self.on_input = on_input
 
-    def set_callbacks(self, on_button_press=None, on_button_release=None, on_input=None):
-        if on_button_press:
-            assert self.on_button_press is None, "Callback already set"
-            self.on_button_press = on_button_press
-        if on_button_release:
-            assert self.on_button_release is None, "Callback already set"
-            self.on_button_release = on_button_release
+    def set_callbacks(self, on_input=None):
         if on_input:
             assert self.on_input is None, "Callback already set"
             self.on_input = on_input
 
     def clear_callbacks(self):
-        self.on_button_press = None
-        self.on_button_release = None
         self.on_input = None
 
     def is_pressed(self, button):
@@ -163,15 +161,11 @@ class GamepadHandler:
         if value >= self.trigger_threshold:
             log.debug(f"Trigger pressed: {button}")
             self.button_states[button] = True
-            if self.on_button_press:
-                self.on_button_press(button)
             if self.on_input:
                 self.on_input(button, True)
         else:
             log.debug(f"Trigger released: {button}")
             self.button_states[button] = False
-            if self.on_button_release:
-                self.on_button_release(button)
             if self.on_input:
                 self.on_input(button, False)
 
@@ -184,8 +178,6 @@ class GamepadHandler:
             return
         # log.debug(f"Button pressed: {cbutton.button} (which: {cbutton.which})")
         self.button_states[cbutton.button] = True
-        if self.on_button_press:
-            self.on_button_press(cbutton.button)
         if self.on_input:
             self.on_input(cbutton.button, True)
 
@@ -198,8 +190,6 @@ class GamepadHandler:
             return
         # log.debug(f"Button released: {cbutton.button} (which: {cbutton.which})")
         self.button_states[cbutton.button] = False
-        if self.on_button_release:
-            self.on_button_release(cbutton.button)
         if self.on_input:
             self.on_input(cbutton.button, False)
 

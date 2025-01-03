@@ -43,7 +43,7 @@ class Voyager:
         self.handle_menu()
 
     def render(self, renderer):
-        self.text_viewer.render(renderer.sdlrenderer)
+        self.text_viewer.render(renderer)
         if self.menu.active:
             self.menu.render(renderer)
 
@@ -85,11 +85,17 @@ class TextViewer:
         font_loader,
         x=0,
         y=0,
+        width=500,
+        height=500,
         font_name="10x20",
         text="<Insert text here>",
         fg=colors.WHITE,
         line_spacing=0,
     ):
+        self.surface = sdl2.SDL_CreateRGBSurface(
+            0, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
+        )
+        self.surface_renderer = sdl2.ext.Renderer(self.surface)
         self.font_loader = font_loader
         self.font = font_name
         self.text = text
@@ -162,7 +168,9 @@ class TextViewer:
                 sdlrenderer, cursor_x, cursor_y, self.cursor_char, *self.cursor_char_color
             )
 
-    def render(self, sdlrenderer):
+    def render(self, renderer):
+        self.surface_renderer.clear((0x20, 0x20, 0x80, 0xA0))
+
         text = self.text
         if isinstance(text, str):
             text = text.encode("utf-8")
@@ -176,7 +184,7 @@ class TextViewer:
             line = line.replace(b"\t", b"    ")
             y = self.y + i * font_size[1] + i * self.line_spacing
             sdlgfx.stringRGBA(
-                sdlrenderer,
+                self.surface_renderer.sdlrenderer,
                 self.x,
                 y,
                 line,
@@ -185,3 +193,7 @@ class TextViewer:
                 self.fg[2],
                 self.fg[3],
             )
+
+        texture = sdl2.ext.Texture(renderer, self.surface)
+        rect = sdl2.SDL_Rect(self.x, self.y, *texture.size)
+        sdl2.SDL_RenderCopy(renderer.sdlrenderer, texture.tx, None, rect)
