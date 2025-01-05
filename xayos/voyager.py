@@ -36,14 +36,16 @@ class Voyager:
         )
         self.menu_controller = MenuController(self.menu)
         self.text_viewer = TextViewer(
-            self.font_loader, 10, 10, font_name="10x20", text="Hello, World!"
+            self.font_loader,
+            font_name="10x20",
+            text="Gemini Voyager\n\nPress START to open the menu.",
         )
 
     def update(self, elapsed_ms):
         self.handle_menu()
 
     def render(self, renderer):
-        self.text_viewer.render(renderer.sdlrenderer)
+        self.text_viewer.render(renderer, 10, 10)
         if self.menu.active:
             self.menu.render(renderer)
 
@@ -83,18 +85,22 @@ class TextViewer:
     def __init__(
         self,
         font_loader,
-        x=0,
-        y=0,
+        width=940,
+        height=520,
         font_name="10x20",
         text="<Insert text here>",
-        fg=colors.WHITE,
+        fg=colors.LIGHT_GREY_2,
         line_spacing=0,
     ):
+        self.surface = sdl2.SDL_CreateRGBSurface(
+            0, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
+        )
+        self.renderer = sdl2.ext.Renderer(self.surface)
         self.font_loader = font_loader
         self.font = font_name
         self.text = text
-        self.x = x
-        self.y = y
+        self.width = width
+        self.height = height
         self.fg = fg
         self.line_spacing = line_spacing
         self.font_loader.set_font(self.font)
@@ -146,8 +152,8 @@ class TextViewer:
 
     def render_cursor(self, sdlrenderer):
         font_size = self.font_loader.get_font_size(self.font)
-        cursor_x = self.x + self.cursor_cx * font_size[0]
-        cursor_y = self.y + self.cursor_cy * font_size[1]
+        cursor_x = 0 + self.cursor_cx * font_size[0]
+        cursor_y = 0 + self.cursor_cy * font_size[1]
         sdlgfx.boxRGBA(
             sdlrenderer,
             cursor_x,
@@ -162,22 +168,24 @@ class TextViewer:
                 sdlrenderer, cursor_x, cursor_y, self.cursor_char, *self.cursor_char_color
             )
 
-    def render(self, sdlrenderer):
-        text = self.text
-        if isinstance(text, str):
-            text = text.encode("utf-8")
+    def draw_to_surface(self):
+        # self.renderer.clear((0x30, 0x30, 0x40, 0x80))
+        self.renderer.clear(colors.TRANSPARENT)
 
         self.font_loader.set_font(self.font)
+        # Calculate width and height in characters
         font_size = self.font_loader.get_font_size(self.font)
+        width_chars = self.width // font_size[0]
+        height_chars = self.height // font_size[1]
+
+        lines = self.split_text_into_lines(self.text, width_chars, height_chars)
 
         # Split text into lines
-        lines = text.split(b"\n")
         for i, line in enumerate(lines):
-            line = line.replace(b"\t", b"    ")
-            y = self.y + i * font_size[1] + i * self.line_spacing
+            y = i * font_size[1] + i * self.line_spacing
             sdlgfx.stringRGBA(
-                sdlrenderer,
-                self.x,
+                self.renderer.sdlrenderer,
+                0,
                 y,
                 line,
                 self.fg[0],
@@ -185,3 +193,64 @@ class TextViewer:
                 self.fg[2],
                 self.fg[3],
             )
+
+    def split_text_into_lines(self, text, width_chars, height_chars):
+        lines = []
+
+        for line in wrap_text(text, width_chars):
+            line = line.encode()
+            line = line.replace(b"\t", b" ")  # Replace tabs with 1 space for now
+            if not line:
+                lines.append(b"")
+                continue
+            while line:
+                if len(line) <= width_chars:
+                    lines.append(line)
+                    break
+                else:
+                    lines.append(line[:width_chars])
+                    line = line[width_chars:]
+
+        return lines
+
+    def render(self, renderer, x=0, y=0):
+        self.draw_to_surface()
+        texture = sdl2.ext.Texture(renderer, self.surface)
+        dstrect = sdl2.SDL_Rect(x, y, *texture.size)
+        sdl2.SDL_RenderCopy(renderer.sdlrenderer, texture.tx, None, dstrect)
+
+
+def tokenize(text):
+    """Tokenize text into words."""
+    # "Hello, World!" -> ["Hello,", " ", "World!"]
+    # "Hello,  World!" -> ["Hello,", " ", " ", "World!"]
+    tokens = []
+    token = ""
+    for char in text:
+        if char.isspace():
+            if token:
+                tokens.append(token)
+                token = ""
+            tokens.append(char)
+        else:
+            token += char
+    if token:
+        tokens.append(token)
+    return tokens
+
+
+def wrap_text(text, width_chars):
+    tokens = tokenize(text)
+    wrapped = []
+    current_line = ""
+    for token in tokens:
+        if token == "\n":
+            wrapped.append(current_line)
+            current_line = ""
+        elif len(current_line) + len(token) <= width_chars:
+            current_line += token
+        else:
+            wrapped.append(current_line)
+            current_line = token
+    wrapped.append(current_line)
+    return wrapped

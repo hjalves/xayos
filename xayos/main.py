@@ -171,7 +171,9 @@ class XayosLunarShell:
             fg=colors.DARK_GREY_2,
         )
         self.application = None
-        self.load_root_application()
+        self.load_application("Voyager")
+        if not self.application:
+            self.load_root_application()
 
     def init_sdl(self):
         sdl2.ext.init(joystick=True, controller=True)
@@ -283,24 +285,6 @@ class XayosLunarShell:
                 # Check for the F11 key to toggle fullscreen mode
                 if event.key.keysym.sym == sdl2.SDLK_F11:
                     self.toggle_fullscreen()
-                if event.key.keysym.sym == sdl2.SDLK_q:
-                    self.application.rotate_speed[0] -= 0.0001
-                    print(self.application.rotate_speed)
-                if event.key.keysym.sym == sdl2.SDLK_w:
-                    self.application.rotate_speed[1] -= 0.0001
-                    print(self.application.rotate_speed)
-                if event.key.keysym.sym == sdl2.SDLK_e:
-                    self.application.rotate_speed[2] -= 0.0001
-                    print(self.application.rotate_speed)
-                if event.key.keysym.sym == sdl2.SDLK_a:
-                    self.application.rotate_speed[0] += 0.0001
-                    print(self.application.rotate_speed)
-                if event.key.keysym.sym == sdl2.SDLK_s:
-                    self.application.rotate_speed[1] += 0.0001
-                    print(self.application.rotate_speed)
-                if event.key.keysym.sym == sdl2.SDLK_d:
-                    self.application.rotate_speed[2] += 0.0001
-                    print(self.application.rotate_speed)
             # Handle all gamepad events and some keyboard events
             self.gamepad.handle_event(event)
 
