@@ -6,6 +6,7 @@ from sdl2 import sdlgfx
 
 from . import colors
 from .gamepad import BUTTON_START, BUTTON_DPAD_DOWN, BUTTON_DPAD_UP
+from .gemtext import GemtextParser
 from .input import MenuController
 from .menu import Menu
 from .utils import wrap_text
@@ -76,16 +77,37 @@ class Voyager:
 
     def open_location(self):
         log.info("Open Location...")
+        with open("faq.gmi") as f:
+            data = f.read()
         # Fetch capsule content
-        response = ignition.request("//geminiprotocol.net/docs/faq.gmi")
+        # response = ignition.request("//geminiprotocol.net/docs/faq.gmi")
         # Get status from remote capsule
         # print(response.status)
         # Get response information from remote capsule
-        data = response.data()
-        with open("faq.gmi", "wt", encoding="utf-8", newline="\n") as f:
-            f.write(data)
-        # data = "# Project Gemini\n\n## Gemini in 100 words\n\nGemini is a new internet technology supporting an electronic library of interconnected text documents.  That's not a new idea, but it's not old fashioned either.  It's timeless, and deserves tools which treat it as a first class concept, not a vestigial corner case.  Gemini isn't about innovation or disruption, it's about providing some respite for those who feel the internet has been disrupted enough already.  We're not out to change the world or destroy other technologies.  We are out to build a lightweight online space where documents are just documents, in the interests of every reader's privacy, attention and bandwidth.\n\n=> docs/faq.gmi\tIf you'd like to know more, read our FAQ\n=> https://www.youtube.com/watch?v=DoEI6VzybDk\tOr, if you'd prefer, here's a video overview\n\n## Official resources\n\n=> news/\tProject Gemini news\n=> docs/\tProject Gemini documentation\n=> history/\tProject Gemini history\n=> software/\tKnown Gemini software\n\nAll content at geminiprotocol.net is CC BY-NC-ND 4.0 licensed unless stated otherwise:\n=> https://creativecommons.org/licenses/by-nc-nd/4.0/\tCC Attribution-NonCommercial-NoDerivs 4.0 International\n"
-        self.text_viewer.set_text(data)
+        # data = response.data()
+        gemtext_tokens = GemtextParser().parse(data)
+
+        text = ""
+        for token in gemtext_tokens:
+            if token.type == "pre":
+                text += token.text
+            elif token.type == "link":
+                text += f"=> {token.text}\t{token.meta}\n"
+            elif token.type == "head1":
+                text += f"# {token.text}\n"
+            elif token.type == "head2":
+                text += f"## {token.text}\n"
+            elif token.type == "head3":
+                text += f"### {token.text}\n"
+            elif token.type == "list":
+                text += f"* {token.text}\n"
+            elif token.type == "quote":
+                text += f"> {token.text}\n"
+            else:
+                assert token.type == "text"
+                text += token.text + "\n"
+
+        self.text_viewer.set_text(text)
 
 
 class TextViewer:
@@ -151,7 +173,7 @@ class TextViewer:
         self.font_loader.set_font(self.font)
         font_size = self.font_loader.get_font_size(self.font)
 
-        lines = self.lines[self.line_offset : self.line_offset + self.height_chars]
+        lines = self.get_screen_lines()
         for i, line in enumerate(lines):
             y = i * font_size[1] + i * self.line_spacing
             sdlgfx.stringRGBA(
@@ -164,6 +186,9 @@ class TextViewer:
                 self.fg[2],
                 self.fg[3],
             )
+
+    def get_screen_lines(self):
+        return self.lines[self.line_offset : self.line_offset + self.height_chars]
 
     def split_text_into_lines(self, text, width_chars):
         lines = []

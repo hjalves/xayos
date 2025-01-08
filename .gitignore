@@ -22,3 +22,4 @@ venv/
 
 # Other files
 out/
+.known_hosts
